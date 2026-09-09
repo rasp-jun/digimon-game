@@ -1,0 +1,111 @@
+# 디토체스 멀티
+
+기존 `../DittochesUnity`를 보존하고 별도로 만든 Unity `6000.6.0f1` 프로젝트입니다.
+Unity 로비에서 **솔로 플레이 / 일반 모드 / 랭크 모드**를 선택합니다.
+
+## Unity에서 열기
+
+1. Unity Hub → Add → 이 `DittochesMulti` 폴더를 선택합니다.
+2. Unity 6000.6.0f1로 열고 패키지 및 이미지 임포트를 기다립니다.
+3. `Assets/Scenes/Bootstrap.unity`를 열고 Play를 누릅니다. 멀티 로비는 코드에서 자동 생성됩니다.
+4. 솔로 입장은 서버가 필요 없습니다. 기존 난이도·전설이 선택 화면으로 이동합니다.
+5. 솔로 로비의 **멀티 모드 선택으로** 버튼으로 돌아올 수 있습니다.
+
+솔로 저장 키와 앱 ID를 기존 프로젝트와 분리했습니다. 기존 프로젝트 파일을 수정하지 않았습니다.
+
+## 같은 PC에서 서버 시작
+
+Python 3.10 이상이 필요하며 추가 패키지는 없습니다. PowerShell에서:
+
+이 PC에서는 `Server/start-server.bat`를 더블클릭해도 됩니다.
+
+```powershell
+cd C:\Users\riguk\OneDrive\Desktop\ditoches\DittochesMulti\Server
+.\start-server.ps1
+```
+
+또는 Python이 PATH에 있는 컴퓨터에서는:
+
+```powershell
+python server.py --host 127.0.0.1 --port 7777
+```
+
+서버 상태 확인: `http://127.0.0.1:7777/health`
+
+Unity 로비의 서버 주소에 `http://127.0.0.1:7777`을 입력하고 닉네임 → **서버 접속** → **매칭 시작**을 누릅니다.
+서버 콘솔에서 Ctrl+C로 종료합니다. 실행 중인 경기는 서버 메모리에 있고 RP는 `Server/ratings.sqlite3`에 저장됩니다.
+
+## 두 사용자로 테스트
+
+**같은 PC:** Unity 메뉴 **Dittoches Multi → Build Windows Client**로 Windows 클라이언트를 만듭니다.
+Editor Play 하나와 `Builds/Windows/DittochesMulti.exe` 하나를 실행합니다. Editor와 실행 파일은 별도 게스트 계정을 사용합니다.
+실행 파일 두 개로 테스트하려면 다음처럼 프로필을 다르게 실행합니다.
+
+```powershell
+.\Builds\Windows\DittochesMulti.exe --profile playerA
+.\Builds\Windows\DittochesMulti.exe --profile playerB
+```
+
+두 클라이언트에서 같은 서버 주소에 접속한 뒤 둘 다 **일반** 또는 둘 다 **랭크**를 선택합니다.
+같은 계정/프로필은 자기 자신과 매칭되지 않습니다. 일반과 랭크 대기열은 서로 만나지 않습니다.
+
+**같은 공유기의 다른 PC / Android:** 서버 PC에서 아래처럼 실행합니다.
+
+```powershell
+.\start-server.ps1 -ListenAddress 0.0.0.0
+```
+
+서버 PC의 `ipconfig`에서 LAN IPv4 주소를 확인하고, 양쪽 로비에 예를 들어 `http://192.168.0.10:7777`을 입력합니다.
+서버 PC의 방화벽에서 신뢰하는 사설 네트워크의 TCP 7777 연결을 허용해야 합니다.
+다른 기기에서 `127.0.0.1`을 입력하면 그 기기 자신에게 접속하므로 서버 PC 주소를 사용해야 합니다.
+
+**인터넷의 다른 사용자:** Python 서버를 지속 실행할 공용 서버가 필요합니다.
+현재 이 폴더 생성만으로 공용 서버가 배포되지는 않습니다. 서버를 호스팅하고 HTTPS 역방향 프록시를 붙인 뒤 모두 같은 HTTPS 주소로 접속하세요.
+기본 HTTP 허용 설정은 로컬/LAN 테스트용입니다. 공개 서비스에는 HTTPS, 정식 계정 인증, 요청 제한 및 운영 설정을 추가해야 합니다.
+
+## 온라인 게임 규칙과 조작
+
+- 현재 버전은 실제 사용자 **2명, 1대1** 대전입니다. AI로 빈자리를 채우지 않습니다.
+- 시작 체력 100, 골드 10, 레벨 3, 코로몬 1마리. 30종 유닛과 레벨별 상점 확률을 사용합니다.
+- 상점 클릭: 구매. 유닛 클릭 후 목적지 클릭: 전장/대기석 이동 또는 교환. 선택 유닛 판매 버튼으로 판매합니다.
+- 리롤 2G, 경험치 +4 구매 4G. 전장 배치 수는 레벨까지, 대기석은 9칸입니다.
+- 동일 유닛 3개를 모으면 별 합성, 3성 완성 유닛은 본인 상점에서 제외됩니다.
+- 두 플레이어가 같은 방의 기물 재고를 공유합니다. 상대 상점과 대기석은 공개하지 않습니다.
+- 준비 시간 40초. 양쪽 준비 완료 시 바로 전투. 준비 취소 후 다시 편집할 수 있습니다.
+- 서버가 고정 시간 간격으로 이동·공격·체력을 계산하고 양쪽에 같은 전투 프레임을 전달합니다. 클라이언트는 8초 동안 재생합니다.
+- 패배 피해는 `20 + 라운드 × 2`, 무승부는 양쪽 15입니다. 수입은 5G + 이자(최대 5G) + 승리 1G, 경험치 +2입니다.
+- 체력이 0이 되거나 10라운드 종료 시 높은 체력이 승리합니다. 체력이 같으면 무승부입니다.
+- 일반은 RP 변동 없음. 랭크는 시작 1000 RP, Elo K=32로 서버가 정산하고 SQLite에 저장합니다.
+- 대기열에서 20초간 통신이 없으면 취소, 경기 중 60초간 통신이 없으면 패배합니다. 60초 이내 재접속은 진행 중인 방으로 복귀합니다.
+- 경기 포기는 패배입니다. 종료 결과에서 로비로 돌아가 다시 매칭할 수 있습니다.
+
+## 현재 범위
+
+온라인은 별도의 간소화된 전투 규칙을 사용하는 첫 프로토타입입니다. 기존 솔로 기능 전체를 온라인으로 이식한 버전은 아닙니다.
+온라인 장비·크립·초밥집·전설이 꾸미기·8인 리그·친구 초대·채팅·MMR 범위별 매칭은 아직 없습니다.
+랭크는 현재 먼저 대기한 두 사용자를 연결합니다. 게스트 계정 키는 클라이언트의 PlayerPrefs에 저장되며, 다른 컴퓨터로 자동 이전되지 않습니다.
+서버 재시작 시 RP는 보존되지만 대기열과 진행 중인 방은 초기화됩니다. 다중 서버/대규모 공개 운영용 구조는 아닙니다.
+
+## 빌드
+
+- Windows: Unity 메뉴 **Dittoches Multi → Build Windows Client**
+- Android: Unity 메뉴 **Dittoches Multi → Build Android APK**
+- Android 결과: `Builds/Android/Dittoches-Multi.apk`, 앱 ID `com.dittoches.multi` (기존 앱과 별도 설치)
+- Android는 Android Build Support, SDK/NDK가 설치돼 있어야 합니다.
+
+## 검증과 파일
+
+```powershell
+cd Server
+python -m unittest -v test_server.py
+```
+
+서버 테스트는 실제 HTTP를 통한 두 사용자 매칭, 인증, 대기열 분리/취소, 구매와 재고, 배치 한도, 전투 프레임 일치, 타이머, 연결 종료, 랭크 저장 및 중복 정산 방지를 확인합니다.
+서버 테스트 14개를 통과했습니다. Unity 6000.6.0f1에서 프로젝트 임포트와 게임/Editor C# 컴파일을 완료했으며 배치 실행 종료 코드 0을 확인했습니다 (`unity-validation.log`). Unity Play에서의 화면 조작, Windows/Android 빌드와 실제 기기 검증은 아직 수행하지 않았습니다.
+
+- `Assets/Scripts/MultiLauncher.cs`: 모드 로비, 네트워크 클라이언트, 온라인 전장과 전투 재생
+- `Assets/Scripts/NativeGame.cs`: 기존 솔로 게임의 별도 복사본
+- `Server/server.py`: 인증, 매칭, 게임 상태, 전투, RP 서버
+- `Server/roster.json`, `Assets/Resources/MultiRoster.json`: 서버와 화면용 동일 유닛 목록
+
+Unity 네트워크 API 참고: [UnityWebRequest 공식 문서](https://docs.unity3d.com/ja/2023.2/ScriptReference/Networking.UnityWebRequest.html).

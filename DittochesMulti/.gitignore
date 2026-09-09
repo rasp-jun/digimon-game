@@ -1,0 +1,13 @@
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+/.utmp/
+*.csproj
+*.sln
+Server/*.sqlite3*
+__pycache__/
+*.log

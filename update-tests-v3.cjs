@@ -1,0 +1,10 @@
+const fs=require('node:fs');let s=fs.readFileSync('tests/engine.test.js','utf8');
+s=s.replaceAll("['claw']","['courage']").replace("p.inventory.push('chip')","p.inventory.push('energy')");
+s=s.replace("const u=owned(s,p,'tentomon');assert.equal(E.move", "p.inventory=['courage','knowledge'];const u=owned(s,p,'tentomon');assert.equal(E.move");
+s=s.replace(/test\('evolution caps HP[^\n]+\n/,`test('fixed-stage units never transform during combat',()=>{const {p,q}=fixture([['metalgreymon',3],['weregarurumon',4]],[['tentomon',3,3]]),b=E.createBattle(p,q,1);E.simulate(b);for(const u of b.units){assert.equal(u.name,D.units[u.id].name);assert.equal(u.sprite,D.units[u.id].sprite);assert.equal('dp' in u,false);assert.equal('evolved' in u,false);assert.equal('jogress' in u,false);}assert.ok(!b.events.some(e=>/진화|조그레스/.test(e)));});\n`);
+s=s.replace("for(const image of [d.sprite,d.evoSprite].filter(Boolean))","for(const image of [d.sprite])");
+s=s.replace("nodes.get('#battleBtn').onclick();assert.ok",`nodes.get('#craftBtn').onclick();assert.equal(nodes.get('#crafting').open,true);assert.match(nodes.get('#recipeList').innerHTML,/우정의 문장/);
+const click=dataset=>handlers.click({target:{closest:()=>({dataset})}});click({craft:'friendship'});let saved=JSON.parse([...storage.values()][0]);assert.ok(saved.players[0].inventory.includes('friendship'));assert.ok(!saved.players[0].inventory.includes('attackData'));assert.ok(!saved.players[0].inventory.includes('chrome'));nodes.get('#crafting').close();
+click({item:'2'});click({cell:'31'});saved=JSON.parse([...storage.values()][0]);assert.deepEqual(saved.players[0].board[3].items,['friendship']);assert.match(nodes.get('#detail').innerHTML,/유년기/);click({unequip:'0'});saved=JSON.parse([...storage.values()][0]);assert.equal(saved.players[0].board[3].items.length,0);assert.ok(saved.players[0].inventory.includes('friendship'));
+nodes.get('#battleBtn').onclick();assert.ok`);
+fs.writeFileSync('tests/engine.test.js',s);
