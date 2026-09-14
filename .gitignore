@@ -32,3 +32,10 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Binary game art is synchronized through the separate asset cloud.
+# Keep Unity .meta files in Git so restored assets retain stable GUIDs.
+DittochesMulti/Assets/Resources/**/*.png
+DittochesMulti/Assets/Resources/**/*.jpg
+DittochesMulti/Assets/Resources/**/*.jpeg
+DittochesMulti/Assets/Resources/**/*.psd

@@ -17,8 +17,8 @@ public static class BuildAndroid
         PlayerSettings.companyName = "Dittoches";
         PlayerSettings.productName = "Dittoches Multi";
         PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.dittoches.multi");
-        PlayerSettings.bundleVersion = "0.3.3";
-        PlayerSettings.Android.bundleVersionCode = 7;
+        PlayerSettings.bundleVersion = "0.3.4";
+        PlayerSettings.Android.bundleVersionCode = 8;
         PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
         PlayerSettings.allowedAutorotateToLandscapeLeft = true;

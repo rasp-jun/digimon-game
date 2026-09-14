@@ -8,3 +8,5 @@
 현재 오리지널 매핑은 `코로몬 → 비트버드`, `뿔몬 → 프리즈마이트`입니다. 비교 기준 팬아트는 `LicensedFanArt/Koromon-v1.png`입니다. 두 트랙 모두 정사각형 투명 배경, 전신 중앙 배치, 청록색 주광과 금색 림라이트를 사용합니다.
 
 게임 기본 로스터에는 아직 연결하지 않았습니다. 최종 아트 트랙을 결정한 뒤 `Assets/Resources/Sprites`의 런타임 초상을 교체합니다.
+
+이미지 바이너리는 GitHub에 저장하지 않습니다. USB의 `digimon-game-assets-cloud/Resources`가 로컬 에셋 보관 원본이며, 선택한 클라우드 서비스에는 해당 폴더만 동기화합니다. Git에는 코드와 Unity GUID 유지를 위한 `.meta` 파일만 보관합니다.
