@@ -36,7 +36,8 @@ public sealed class MultiLauncher : MonoBehaviour
     readonly System.Collections.Generic.Dictionary<string,string> originalSprites = new System.Collections.Generic.Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
     readonly System.Collections.Generic.Dictionary<string,string> fanUnitSprites = new System.Collections.Generic.Dictionary<string,string>{
         {"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"},{"mochimon","ArtVariants/LicensedFanArt/Mochimon-unit-v2"},
-        {"tanemon","ArtVariants/LicensedFanArt/Tanemon-unit-v2"},{"pyocomon","ArtVariants/LicensedFanArt/Pyocomon-unit-v2"},{"tokomon","ArtVariants/LicensedFanArt/Tokomon-unit-v2"}
+        {"tanemon","ArtVariants/LicensedFanArt/Tanemon-unit-v2"},{"pyocomon","ArtVariants/LicensedFanArt/Pyocomon-unit-v2"},{"tokomon","ArtVariants/LicensedFanArt/Tokomon-unit-v2"},
+        {"agumon","ArtVariants/LicensedFanArt/Agumon-unit-v2"},{"gabumon","ArtVariants/LicensedFanArt/Gabumon-unit-v2"}
     };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
