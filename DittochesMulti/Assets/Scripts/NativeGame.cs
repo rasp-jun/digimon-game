@@ -54,6 +54,7 @@ public sealed class NativeGame : MonoBehaviour
     private readonly UnitDef[] shop=new UnitDef[5];
     private readonly Dictionary<string,int> pool=new Dictionary<string,int>();
     private readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
+    private Texture2D arenaBackground;
     private bool lobby=true, battling, win;
     private int difficulty=1, legend, gold, hp=100, level=1, xp, round=1, selectedBench=-1, selectedBoard=-1, selectedItem=-1;
     private float battleProgress;
@@ -80,6 +81,7 @@ public sealed class NativeGame : MonoBehaviour
     private void Awake()
     {
         Application.targetFrameRate=60; Screen.sleepTimeout=SleepTimeout.NeverSleep;
+        arenaBackground=Resources.Load<Texture2D>("UI/file-island-arena-v1");
         difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0);
         if(!Load())ResetGame();
     }
@@ -150,9 +152,9 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawBoard()
     {
         string boardTitle=battling?battleText:Time.unscaledTime<resultNoticeUntil?battleText:$"{RoundType()} · 배치 {board.Count(u=>u!=null)} / {level} · 유닛 선택 후 이동";GUI.Label(new Rect(300,105,1040,35),boardTitle,header);
-        DrawRect(new Rect(300,148,1040,670),new Color(.055f,.16f,.16f));float cw=138,ch=74,gap=7;
+        Rect arenaRect=new Rect(300,148,1040,670);if(arenaBackground!=null){GUI.DrawTexture(arenaRect,arenaBackground,ScaleMode.ScaleAndCrop,true);DrawRect(arenaRect,new Color(.01f,.04f,.055f,.26f));}else DrawRect(arenaRect,new Color(.055f,.16f,.16f));float cw=138,ch=74,gap=7;
         for(int row=0;row<8;row++)for(int col=0;col<7;col++){
-            Rect r=new Rect(322+col*(cw+gap),165+row*(ch+gap),cw,ch);DrawRect(r,row<4?new Color(.16f,.11f,.13f):new Color(.08f,.20f,.18f));
+            Rect r=new Rect(322+col*(cw+gap),165+row*(ch+gap),cw,ch);DrawRect(r,row<4?new Color(.24f,.07f,.09f,.48f):new Color(.02f,.19f,.17f,.48f));
             if(!battling&&row>=4){int idx=(row-4)*7+col;Unit u=board[idx];if(idx==selectedBoard)DrawRect(new Rect(r.x+3,r.y+3,r.width-6,r.height-6),new Color(.35f,.52f,.18f));if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBoard(idx);if(u!=null)DrawUnit(r,u,false);}
         }
         if(battling)foreach(Fighter f in fighters.Where(x=>!x.dead))DrawFighter(f);
@@ -258,15 +260,16 @@ public sealed class NativeGame : MonoBehaviour
     }
     private Fighter CreateFighter(Unit unit,bool enemy,Vector2 pos)
     {
-        float scale=1f;if(enemy){int stage=round<=3?1:2+(round-4)/7,step=round<=3?round:1+(round-4)%7;scale=RoundType()=="크립"?(stage==1?.38f+.12f*step:1f+.18f*(stage-2)):DifficultyScale[difficulty]*(1+round*.035f);}float itemHp=unit.items.Sum(ItemHealth);float health=(75+unit.def.cost*32+itemHp)*Mathf.Pow(1.72f,unit.star-1)*scale;
+        float scale=1f;if(enemy){int stage=round<=3?1:2+(round-4)/7,step=round<=3?round:1+(round-4)%7;scale=RoundType()=="크립"?(stage==1?.38f+.12f*step:1f+.18f*(stage-2)):DifficultyScale[difficulty]*(1+round*.035f);}UnitMeta meta=Meta(unit.def.id);float itemHp=unit.items.Sum(ItemHealth);float roleHp=!enemy&&RoleActive("탱커")&&unit.def.role=="탱커"?1.25f:!enemy&&RoleActive("지원")?1.10f:1f;float health=(meta.hp+itemHp)*Mathf.Pow(1.8f,unit.star-1)*scale*roleHp;
         return new Fighter{unit=unit,enemy=enemy,pos=pos,hp=health,maxHp=health,attackScale=scale,cooldown=UnityEngine.Random.Range(.1f,.55f)};
     }
+    private bool RoleActive(string role){return board.Where(u=>u!=null&&u.def.role==role).Select(u=>u.def.id).Distinct().Count()>=2;}
     private void UpdateCombat(float dt)
     {
         foreach(Fighter f in fighters){f.hitFlash=Mathf.Max(0,f.hitFlash-dt);f.attackFlash=Mathf.Max(0,f.attackFlash-dt);if(f.dead)continue;f.cooldown-=dt;Fighter target=fighters.Where(x=>!x.dead&&x.enemy!=f.enemy).OrderBy(x=>Vector2.Distance(f.pos,x.pos)).FirstOrDefault();if(target==null)continue;
-            float distance=Vector2.Distance(f.pos,target.pos);bool ranged=f.unit.def.role=="사수"||f.unit.def.role=="마법사"||f.unit.def.role=="지원";float range=ranged?2.55f:1.05f;
-            if(distance>range){float speed=(ranged?.72f:1.05f)*dt;f.pos=Vector2.MoveTowards(f.pos,target.pos,speed);continue;}
-            if(f.cooldown>0)continue;float itemAtk=1+f.unit.items.Sum(ItemAttack);float damage=(13+f.unit.def.cost*5)*Mathf.Pow(1.48f,f.unit.star-1)*itemAtk;if(f.enemy)damage*=f.attackScale;target.hp-=damage;target.hitFlash=.18f;f.attackFlash=.16f;float speedBonus=1+f.unit.items.Sum(ItemSpeed);f.cooldown=(ranged?1.05f:.78f)/speedBonus;if(target.hp<=0){target.hp=0;target.dead=true;}
+            UnitMeta meta=Meta(f.unit.def.id);float distance=Vector2.Distance(f.pos,target.pos),range=Mathf.Lerp(1.05f,2.9f,(meta.range-1)/3f);
+            if(distance>range){float moveSpeed=(meta.range>1?.70f:1.0f)*dt;f.pos=Vector2.MoveTowards(f.pos,target.pos,moveSpeed);continue;}
+            if(f.cooldown>0)continue;float itemAtk=1+f.unit.items.Sum(ItemAttack);float roleAtk=!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사"?1.18f:!f.enemy&&RoleActive("마법사")&&f.unit.def.role=="마법사"?1.20f:1f;float damage=meta.atk*Mathf.Pow(1.5f,f.unit.star-1)*itemAtk*roleAtk;if(f.enemy)damage*=f.attackScale;target.hp-=damage;target.hitFlash=.18f;f.attackFlash=.16f;float speedBonus=1+f.unit.items.Sum(ItemSpeed);if(!f.enemy&&RoleActive("사수")&&f.unit.def.role=="사수")speedBonus*=1.22f;f.cooldown=1f/(meta.speed*speedBonus);if(!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사")f.hp=Mathf.Min(f.maxHp,f.hp+damage*.12f);if(target.hp<=0){target.hp=0;target.dead=true;}
         }
     }
     private float ItemHealth(int i){switch(i){case 1:return 120;case 3:return 150;case 5:return 80;case 7:return 120;case 8:return 250;case 9:return 180;case 10:return 500;case 12:return 200;case 13:return 650;default:return 0;}}
