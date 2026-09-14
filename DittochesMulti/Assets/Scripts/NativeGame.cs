@@ -40,6 +40,8 @@ public sealed class NativeGame : MonoBehaviour
         new UnitDef("herakle","헤라클레스캅테리몬",5,"Herakle_Kabuterimon","탱커"),new UnitDef("hououmon","페닉스몬",5,"Hououmon","마법사"),new UnitDef("wargreymon","워그레이몬",5,"War_Greymon","전사"),new UnitDef("metalgarurumon","메탈가루몬",5,"Metal_Garurumon","사수"),new UnitDef("rosemon","로제몬",5,"Rosemon","지원"),new UnitDef("seraphimon","세라피몬",5,"Seraphimon","마법사")
     };
     private static readonly Dictionary<string,UnitDef> RosterById=Roster.ToDictionary(unit=>unit.id);
+    private static readonly Dictionary<string,string> OriginalNames=new Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"}};
+    private static readonly Dictionary<string,string> OriginalSprites=new Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"}};
     private const string SaveKey="multiSoloStateV1";
     private static readonly string[] Legends={"비트몬","코로몬","토코몬","어니몬"};
     private static readonly string[] LegendSprites={"","Koromon","Tokomon","Pyocomon"};
@@ -99,8 +101,8 @@ public sealed class NativeGame : MonoBehaviour
         card=new GUIStyle(GUI.skin.box); card.normal.background=MakeTexture(new Color(.08f,.16f,.18f)); selectedStyle=new GUIStyle(card); selectedStyle.normal.background=MakeTexture(new Color(.25f,.34f,.20f));
     }
     private Texture2D Tex(string name) { if(string.IsNullOrEmpty(name)) return null; Texture2D t; if(!textures.TryGetValue(name,out t)){t=Resources.Load<Texture2D>(name.Contains("/")?name:"Sprites/"+name); textures[name]=t;} return t; }
-    private string UnitName(UnitDef d){return artPack==1&&d.id=="koromon"?"비트버드":d.name;}
-    private string UnitSprite(UnitDef d){return artPack==1&&d.id=="koromon"?"ArtVariants/Original/Bitbud-v1":d.sprite;}
+    private string UnitName(UnitDef d){string value;return artPack==1&&OriginalNames.TryGetValue(d.id,out value)?value:d.name;}
+    private string UnitSprite(UnitDef d){string value;return artPack==1&&OriginalSprites.TryGetValue(d.id,out value)?value:d.sprite;}
     private UnitMeta Meta(string id){switch(id){
         case "koromon":return new UnitMeta("백신","용형",550,43,.8f,1);case "tsunomon":return new UnitMeta("데이터","야수형",430,43,.85f,3);case "mochimon":return new UnitMeta("백신","곤충형",690,32,.65f,1);case "tanemon":return new UnitMeta("데이터","식물형",460,29,.7f,3);case "pyocomon":return new UnitMeta("백신","조류형",440,36,.75f,3);case "tokomon":return new UnitMeta("백신","천사형",490,28,.7f,3);
         case "agumon":return new UnitMeta("백신","용형",600,48,.8f,1);case "gabumon":return new UnitMeta("데이터","야수형",460,49,.85f,4);case "tentomon":return new UnitMeta("백신","곤충형",760,36,.65f,1);case "palmon":return new UnitMeta("데이터","식물형",490,32,.7f,3);case "piyomon":return new UnitMeta("백신","조류형",530,43,.75f,3);case "patamon":return new UnitMeta("백신","천사형",570,35,.7f,3);
