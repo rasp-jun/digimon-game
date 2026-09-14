@@ -43,6 +43,13 @@ public sealed class NativeGame : MonoBehaviour
     private static readonly Dictionary<string,UnitDef> RosterById=Roster.ToDictionary(unit=>unit.id);
     private static readonly Dictionary<string,string> OriginalNames=new Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
     private static readonly Dictionary<string,string> OriginalSprites=new Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
+    private static readonly Dictionary<string,string> SkillNames=new Dictionary<string,string>{
+        {"koromon","용기 펄스"},{"tsunomon","프리즘 볼트"},{"mochimon","데이터 장벽"},{"tanemon","생장 신호"},{"pyocomon","버스트 깃털"},{"tokomon","희망 파동"},
+        {"agumon","화염 압축"},{"gabumon","빙결 탄환"},{"tentomon","전도성 갑각"},{"palmon","회복 덩굴"},{"piyomon","나선 화염"},{"patamon","상승 기류"},
+        {"togemon","가시 요새"},{"garurumon","극속 돌진"},{"greymon","대지 강타"},{"kabuterimon","전자 포격"},{"angemon","빛의 단죄"},{"birdramon","홍염 연사"},
+        {"metalgreymon","기가 포격"},{"weregarurumon","월광 난무"},{"lilimon","꽃가루 재생"},{"holyangemon","천공 폭발"},{"atlur","초중량 방벽"},{"garudamon","진홍 폭풍"},
+        {"herakle","절대 갑주"},{"hououmon","불멸의 태양"},{"wargreymon","용왕 연격"},{"metalgarurumon","빙하 탄막"},{"rosemon","생명의 정원"},{"seraphimon","세라프 심판"}
+    };
     private const string SaveKey="multiSoloStateV1";
     private static readonly string[] Legends={"비트몬","코로몬","토코몬","어니몬"};
     private static readonly string[] LegendSprites={"","Koromon","Tokomon","Pyocomon"};
@@ -104,6 +111,7 @@ public sealed class NativeGame : MonoBehaviour
     private Texture2D Tex(string name) { if(string.IsNullOrEmpty(name)) return null; Texture2D t; if(!textures.TryGetValue(name,out t)){t=Resources.Load<Texture2D>(name.Contains("/")?name:"Sprites/"+name); textures[name]=t;} return t; }
     private string UnitName(UnitDef d){string value;return artPack==1&&OriginalNames.TryGetValue(d.id,out value)?value:d.name;}
     private string UnitSprite(UnitDef d){string value;return artPack==1&&OriginalSprites.TryGetValue(d.id,out value)?value:d.sprite;}
+    private string SkillName(UnitDef d){string value;return SkillNames.TryGetValue(d.id,out value)?value:"데이터 방출";}
     private UnitMeta Meta(string id){switch(id){
         case "koromon":return new UnitMeta("백신","용형",550,43,.8f,1);case "tsunomon":return new UnitMeta("데이터","야수형",430,43,.85f,3);case "mochimon":return new UnitMeta("백신","곤충형",690,32,.65f,1);case "tanemon":return new UnitMeta("데이터","식물형",460,29,.7f,3);case "pyocomon":return new UnitMeta("백신","조류형",440,36,.75f,3);case "tokomon":return new UnitMeta("백신","천사형",490,28,.7f,3);
         case "agumon":return new UnitMeta("백신","용형",600,48,.8f,1);case "gabumon":return new UnitMeta("데이터","야수형",460,49,.85f,4);case "tentomon":return new UnitMeta("백신","곤충형",760,36,.65f,1);case "palmon":return new UnitMeta("데이터","식물형",490,32,.7f,3);case "piyomon":return new UnitMeta("백신","조류형",530,43,.75f,3);case "patamon":return new UnitMeta("백신","천사형",570,35,.7f,3);
@@ -227,7 +235,7 @@ public sealed class NativeGame : MonoBehaviour
     private int SynergyCount(string trait){return board.Where(x=>x!=null).GroupBy(x=>x.def.id).Select(g=>Meta(g.First().def.id)).Count(m=>m.attr==trait||m.family==trait);}
     private void SynergyLine(float x,float y,string name,int count,int need,string desc){GUI.Box(new Rect(x,y,470,44),GUIContent.none,count>=need?selectedStyle:card);GUI.Label(new Rect(x+12,y+4,120,20),$"{name}  {count}/{need}",label);GUI.Label(new Rect(x+142,y+5,315,32),desc,small);}
     private string RoleDescription(string role){if(role=="탱커")return "2명: 방어력과 생존력 증가";if(role=="전사")return "2명: 공격력과 흡혈 증가";if(role=="사수")return "2명: 공격 속도 증가";if(role=="마법사")return "2명: 스킬 피해 증가";return "2명: 아군 회복과 보호 효과 증가";}
-    private string SkillDescription(UnitDef d){SkillMeta s=Skill(d.id);int count=SkillTargets(d.id);if(d.role=="탱커")return $"{s.maxMana:0} 마나: 체력 {18+s.power*5:0}% 회복";if(d.role=="전사")return $"{s.maxMana:0} 마나: {count}명에게 강화 강타";if(d.role=="사수")return $"{s.maxMana:0} 마나: {count}명 연속 사격";if(d.role=="마법사")return $"{s.maxMana:0} 마나: 반경 {SkillRadius(d.id):0.0} 데이터 폭발";return $"{s.maxMana:0} 마나: 아군 {count}명 회복";}
+    private string SkillDescription(UnitDef d){SkillMeta s=Skill(d.id);int count=SkillTargets(d.id);string prefix=SkillName(d)+$" · {s.maxMana:0} 마나 · ";if(d.role=="탱커")return prefix+$"체력 {18+s.power*5:0}% 회복";if(d.role=="전사")return prefix+$"{count}명 강화 강타";if(d.role=="사수")return prefix+$"{count}명 연속 사격";if(d.role=="마법사")return prefix+$"반경 {SkillRadius(d.id):0.0} 폭발";return prefix+$"아군 {count}명 회복";}
     private int SkillTargets(string id){switch(id){case "koromon":case "mochimon":case "agumon":case "tentomon":case "togemon":case "greymon":return 1;case "tsunomon":case "tanemon":case "pyocomon":case "tokomon":case "gabumon":case "palmon":case "piyomon":case "patamon":case "garurumon":case "kabuterimon":case "angemon":return 2;case "birdramon":case "metalgreymon":case "weregarurumon":case "lilimon":case "holyangemon":case "atlur":case "garudamon":return 3;default:return 4;}}
     private float SkillRadius(string id){switch(id){case "pyocomon":return 1.15f;case "piyomon":return 1.3f;case "kabuterimon":return 1.45f;case "holyangemon":return 1.7f;case "hououmon":return 2.25f;case "seraphimon":return 2f;default:return 1.6f;}}
     private void ClickBench(int idx)
