@@ -21,7 +21,7 @@ public sealed class MultiLauncher : MonoBehaviour
     string profile = "", selectedArea = "";
     int selectedSlot = -1;
     bool busy, solo, confirmLeave, connectionError;
-    int lobbyTab;
+    int lobbyTab, codexPage, artPack;
     float nextPoll, receivedAt;
     State state;
     Catalog catalog;
@@ -32,6 +32,8 @@ public sealed class MultiLauncher : MonoBehaviour
     readonly Color gold = new Color(.79f,.63f,.30f), paleGold = new Color(.94f,.84f,.57f), cyan = new Color(.22f,.72f,.79f), muted = new Color(.57f,.65f,.72f);
     readonly System.Collections.Generic.Dictionary<string, Texture2D> textures = new System.Collections.Generic.Dictionary<string, Texture2D>();
     readonly System.Collections.Generic.List<Texture2D> uiTextures = new System.Collections.Generic.List<Texture2D>();
+    readonly System.Collections.Generic.Dictionary<string,string> originalNames = new System.Collections.Generic.Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
+    readonly System.Collections.Generic.Dictionary<string,string> originalSprites = new System.Collections.Generic.Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Boot()
@@ -52,6 +54,7 @@ public sealed class MultiLauncher : MonoBehaviour
         server = PlayerPrefs.GetString("multi.server", server);
         nickname = PlayerPrefs.GetString("multi.name." + profile, nickname);
         catalog = JsonUtility.FromJson<Catalog>(Resources.Load<TextAsset>("MultiRoster").text);
+        artPack = Mathf.Clamp(PlayerPrefs.GetInt("multiSoloArtPack",0),0,1);
         lobbyBackground = Resources.Load<Texture2D>("UI/file-island-arena-v1");
         lobbyMascot = Resources.Load<Texture2D>("ArtVariants/LicensedFanArt/Koromon-v1");
         if (lobbyMascot == null) lobbyMascot = Resources.Load<Texture2D>("Sprites/Koromon");
@@ -284,12 +287,14 @@ public sealed class MultiLauncher : MonoBehaviour
         Rect info=new Rect(88,650,575,112); Card(info,new Color(.018f,.055f,.075f,.94f),new Color(cyan.r,cyan.g,cyan.b,.55f));
         GUI.Label(new Rect(110,668,520,25),"팀을 완성하는 건 당신의 선택",eyebrow);
         GUI.Label(new Rect(110,700,520,50),"같은 디지몬 3마리를 모아 승급하고\n레벨을 올려 더 강력한 디지몬을 만나세요.",text);
-        if(lobbyMascot!=null) GUI.DrawTexture(new Rect(1010,330,310,310),lobbyMascot,ScaleMode.ScaleToFit,true);
+        Texture2D mascot=LobbyPortrait("koromon")??lobbyMascot;
+        if(mascot!=null) GUI.DrawTexture(new Rect(1010,330,310,310),mascot,ScaleMode.ScaleToFit,true);
         Rect legendCard=new Rect(980,665,390,95); Card(legendCard,new Color(.015f,.045f,.065f,.95f),new Color(cyan.r,cyan.g,cyan.b,.45f));
         GUI.Label(new Rect(1002,678,350,22),"MY LITTLE LEGEND",eyebrow);
-        GUI.Label(new Rect(1002,707,350,40),"코로몬",title);
+        GUI.Label(new Rect(1002,707,350,40),LobbyName(catalog.units[0]),title);
         GUI.Label(new Rect(50,895,550,30),"FILE ISLAND LEAGUE    /    DIGITAL FRONTIER 0.3",eyebrow);
         GUI.Label(new Rect(1280,895,260,30),"●  솔로 플레이 가능",small);
+        if(Btn(new Rect(1370,820,180,48),artPack==0?"디지몬 버전":"오리지널 버전")) SetArtPack(1-artPack);
     }
 
     void DrawPlayLobby()
@@ -343,16 +348,47 @@ public sealed class MultiLauncher : MonoBehaviour
         GUI.Label(new Rect(70,105,500,30),"DIGIMON CODEX",eyebrow);
         GUI.Label(new Rect(70,135,900,55),"디지몬 도감",title);
         GUI.Label(new Rect(70,195,1100,35),"현재 로스터의 디지몬과 역할군을 확인하세요.",text);
-        int count=Mathf.Min(catalog.units.Length,15);
+        int pageSize=15, pageCount=Mathf.CeilToInt(catalog.units.Length/(float)pageSize);
+        codexPage=Mathf.Clamp(codexPage,0,pageCount-1);
+        int start=codexPage*pageSize, count=Mathf.Min(pageSize,catalog.units.Length-start);
+        GUI.Label(new Rect(1180,145,170,35),artPack==0?"디지몬 버전":"오리지널 버전",centered);
+        if(Btn(new Rect(1360,138,170,45),"버전 전환")) SetArtPack(1-artPack);
         for(int i=0;i<count;i++)
         {
-            int col=i%5,row=i/5; Rect r=new Rect(70+col*294,260+row*190,270,165); UnitDef def=catalog.units[i];
+            int col=i%5,row=i/5; Rect r=new Rect(70+col*294,260+row*190,270,165); UnitDef def=catalog.units[start+i];
             Card(r,new Color(surface2.r,surface2.g,surface2.b,.96f),new Color(cyan.r,cyan.g,cyan.b,.35f));
-            Portrait(new Rect(r.x+15,r.y+15,115,105),def.id);
-            GUI.Label(new Rect(r.x+140,r.y+20,120,32),def.name,text);
+            Texture2D portrait=LobbyPortrait(def.id);
+            if(portrait!=null) GUI.DrawTexture(new Rect(r.x+15,r.y+15,115,105),portrait,ScaleMode.ScaleToFit,true);
+            GUI.Label(new Rect(r.x+140,r.y+20,120,32),LobbyName(def),text);
             GUI.Label(new Rect(r.x+140,r.y+55,120,28),def.role,eyebrow);
             GUI.Label(new Rect(r.x+140,r.y+90,120,28),def.cost+" GOLD",small);
         }
+        if(Btn(new Rect(610,850,150,48),"← 이전",codexPage>0)) codexPage--;
+        GUI.Label(new Rect(770,852,160,44),$"{codexPage+1} / {pageCount}",centered);
+        if(Btn(new Rect(940,850,150,48),"다음 →",codexPage<pageCount-1)) codexPage++;
+        if(artPack==1) GUI.Label(new Rect(1120,850,410,48),"오리지널 캐릭터는 현재 3종부터 순차 제작 중",small);
+    }
+
+    void SetArtPack(int value)
+    {
+        artPack=Mathf.Clamp(value,0,1);
+        PlayerPrefs.SetInt("multiSoloArtPack",artPack); PlayerPrefs.Save();
+        notice=artPack==0?"디지몬 팬 버전으로 전환했습니다.":"오리지널 캐릭터 버전으로 전환했습니다.";
+    }
+
+    string LobbyName(UnitDef def)
+    {
+        if(artPack==1 && originalNames.TryGetValue(def.id,out string value)) return value;
+        return def.name;
+    }
+
+    Texture2D LobbyPortrait(string id)
+    {
+        UnitDef def=Def(id); if(def==null) return null;
+        string path="Sprites/"+def.sprite;
+        if(artPack==1 && originalSprites.TryGetValue(id,out string originalPath)) path=originalPath;
+        if(!textures.TryGetValue(path,out Texture2D texture)) { texture=Resources.Load<Texture2D>(path); textures[path]=texture; }
+        return texture;
     }
 
     UnitDef Def(string id) { return Array.Find(catalog.units, u => u.id == id); }
