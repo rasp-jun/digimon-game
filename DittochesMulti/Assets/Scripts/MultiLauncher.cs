@@ -26,7 +26,7 @@ public sealed class MultiLauncher : MonoBehaviour
     State state;
     Catalog catalog;
     NativeGame soloGame;
-    GUIStyle title, heroTitle, text, small, button, navButton, box, eyebrow, centered, stat, input;
+    GUIStyle title, heroTitle, text, small, button, goldButton, navButton, box, eyebrow, centered, stat, input;
     Texture2D lobbyBackground, lobbyMascot;
     readonly Color navy = new Color(.025f,.043f,.075f), surface = new Color(.045f,.075f,.115f), surface2 = new Color(.065f,.105f,.15f);
     readonly Color gold = new Color(.79f,.63f,.30f), paleGold = new Color(.94f,.84f,.57f), cyan = new Color(.22f,.72f,.79f), muted = new Color(.57f,.65f,.72f);
@@ -55,7 +55,8 @@ public sealed class MultiLauncher : MonoBehaviour
         nickname = PlayerPrefs.GetString("multi.name." + profile, nickname);
         catalog = JsonUtility.FromJson<Catalog>(Resources.Load<TextAsset>("MultiRoster").text);
         artPack = Mathf.Clamp(PlayerPrefs.GetInt("multiSoloArtPack",0),0,1);
-        lobbyBackground = Resources.Load<Texture2D>("UI/file-island-arena-v1");
+        lobbyBackground = Resources.Load<Texture2D>("UI/file-island-lobby-v2");
+        if (lobbyBackground == null) lobbyBackground = Resources.Load<Texture2D>("UI/file-island-arena-v1");
         lobbyMascot = Resources.Load<Texture2D>("ArtVariants/LicensedFanArt/Koromon-v1");
         if (lobbyMascot == null) lobbyMascot = Resources.Load<Texture2D>("Sprites/Koromon");
     }
@@ -162,6 +163,7 @@ public sealed class MultiLauncher : MonoBehaviour
         button = new GUIStyle(GUI.skin.button) { fontSize=17,fontStyle=FontStyle.Bold,wordWrap=true,padding=new RectOffset(14,14,8,8),border=new RectOffset(1,1,1,1) };
         button.normal.background=UiTex(new Color(.075f,.13f,.18f)); button.hover.background=UiTex(new Color(.12f,.22f,.27f)); button.active.background=UiTex(new Color(.20f,.25f,.17f));
         button.focused.background=button.hover.background; button.normal.textColor=new Color(.94f,.91f,.82f); button.hover.textColor=Color.white; button.active.textColor=paleGold; button.focused.textColor=Color.white;
+        goldButton = new GUIStyle(button); goldButton.normal.background=UiTex(new Color(.76f,.49f,.16f)); goldButton.hover.background=UiTex(new Color(.91f,.64f,.24f)); goldButton.active.background=UiTex(new Color(.64f,.39f,.10f)); goldButton.normal.textColor=Color.white; goldButton.hover.textColor=Color.white;
         navButton = new GUIStyle(button) { fontSize=18,alignment=TextAnchor.MiddleCenter };
         box = new GUIStyle(GUI.skin.box) { fontSize=18 }; box.normal.background=UiTex(surface);
         input = new GUIStyle(GUI.skin.textField) { fontSize=18,padding=new RectOffset(14,14,8,8),border=new RectOffset(1,1,1,1) };
@@ -184,6 +186,12 @@ public sealed class MultiLauncher : MonoBehaviour
     {
         bool previous = GUI.enabled; GUI.enabled = previous && enabled && !busy;
         bool clicked = GUI.Button(rect, label, button); GUI.enabled = previous; return clicked;
+    }
+
+    bool GoldBtn(Rect rect, string label)
+    {
+        bool previous=GUI.enabled; GUI.enabled=previous&&!busy;
+        bool clicked=GUI.Button(rect,label,goldButton); GUI.enabled=previous; return clicked;
     }
 
     void Panel(Rect rect, Color color)
@@ -277,12 +285,12 @@ public sealed class MultiLauncher : MonoBehaviour
 
     void DrawHomeLobby()
     {
-        DrawLobbyBackground(.88f); DrawTopNavigation();
+        DrawLobbyBackground(1f); DrawLobbyAtmosphere(); DrawTopNavigation();
         Panel(new Rect(0,78,860,866),new Color(.006f,.018f,.038f,.78f));
         GUI.Label(new Rect(85,180,560,28),"FILE ISLAND  /  새로운 모험의 시작",eyebrow);
         GUI.Label(new Rect(85,238,660,80),"디지몬 오토체스",heroTitle);
         GUI.Label(new Rect(88,330,590,75),"작은 디지몬의 가능성은 무한하다.\n모으고, 배치하고, 나만의 팀으로 승리하세요.",text);
-        if(Btn(new Rect(88,455,310,72),"게임하기   →")) lobbyTab=1;
+        if(GoldBtn(new Rect(88,455,310,72),"게임하기   →")) lobbyTab=1;
         GUI.Label(new Rect(88,545,500,28),"일반 대전  ·  랭크 대전  ·  솔로 플레이",small);
         Rect info=new Rect(88,650,575,112); Card(info,new Color(.018f,.055f,.075f,.94f),new Color(cyan.r,cyan.g,cyan.b,.55f));
         GUI.Label(new Rect(110,668,520,25),"팀을 완성하는 건 당신의 선택",eyebrow);
@@ -295,6 +303,18 @@ public sealed class MultiLauncher : MonoBehaviour
         GUI.Label(new Rect(50,895,550,30),"FILE ISLAND LEAGUE    /    DIGITAL FRONTIER 0.3",eyebrow);
         GUI.Label(new Rect(1280,895,260,30),"●  솔로 플레이 가능",small);
         if(Btn(new Rect(1370,820,180,48),artPack==0?"디지몬 버전":"오리지널 버전")) SetArtPack(1-artPack);
+    }
+
+    void DrawLobbyAtmosphere()
+    {
+        float time=Time.unscaledTime;
+        for(int i=0;i<14;i++)
+        {
+            float x=880+(i*83%650), baseY=120+(i*137%700), y=baseY+Mathf.Sin(time*(.35f+i*.025f)+i)*18f;
+            float size=3+(i%3)*2, alpha=.16f+(i%4)*.045f;
+            Panel(new Rect(x,y,size,size),new Color(.35f,.9f,1f,alpha));
+        }
+        Panel(new Rect(0,78,1600,5),new Color(gold.r,gold.g,gold.b,.14f));
     }
 
     void DrawPlayLobby()
