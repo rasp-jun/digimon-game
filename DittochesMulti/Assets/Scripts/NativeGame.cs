@@ -43,7 +43,10 @@ public sealed class NativeGame : MonoBehaviour
     private static readonly Dictionary<string,UnitDef> RosterById=Roster.ToDictionary(unit=>unit.id);
     private static readonly Dictionary<string,string> OriginalNames=new Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
     private static readonly Dictionary<string,string> OriginalSprites=new Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
-    private static readonly Dictionary<string,string> FanUnitSprites=new Dictionary<string,string>{{"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"}};
+    private static readonly Dictionary<string,string> FanUnitSprites=new Dictionary<string,string>{
+        {"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"},{"mochimon","ArtVariants/LicensedFanArt/Mochimon-unit-v2"},
+        {"tanemon","ArtVariants/LicensedFanArt/Tanemon-unit-v2"},{"pyocomon","ArtVariants/LicensedFanArt/Pyocomon-unit-v2"},{"tokomon","ArtVariants/LicensedFanArt/Tokomon-unit-v2"}
+    };
     private static readonly Dictionary<string,string> SkillNames=new Dictionary<string,string>{
         {"koromon","용기 펄스"},{"tsunomon","프리즘 볼트"},{"mochimon","데이터 장벽"},{"tanemon","생장 신호"},{"pyocomon","버스트 깃털"},{"tokomon","희망 파동"},
         {"agumon","화염 압축"},{"gabumon","빙결 탄환"},{"tentomon","전도성 갑각"},{"palmon","회복 덩굴"},{"piyomon","나선 화염"},{"patamon","상승 기류"},
