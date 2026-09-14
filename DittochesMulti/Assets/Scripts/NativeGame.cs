@@ -56,7 +56,7 @@ public sealed class NativeGame : MonoBehaviour
     private readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
     private Texture2D arenaBackground;
     private bool lobby=true, battling, win;
-    private int difficulty=1, legend, gold, hp=100, level=1, xp, round=1, selectedBench=-1, selectedBoard=-1, selectedItem=-1;
+    private int difficulty=1, legend, artPack, gold, hp=100, level=1, xp, round=1, selectedBench=-1, selectedBoard=-1, selectedItem=-1;
     private float battleProgress;
     private float resultNoticeUntil;
     private string battleText="전투 준비", lastReward="";
@@ -82,7 +82,7 @@ public sealed class NativeGame : MonoBehaviour
     {
         Application.targetFrameRate=60; Screen.sleepTimeout=SleepTimeout.NeverSleep;
         arenaBackground=Resources.Load<Texture2D>("UI/file-island-arena-v1");
-        difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0);
+        difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0); artPack=PlayerPrefs.GetInt("multiSoloArtPack",0);
         if(!Load())ResetGame();
     }
 
@@ -98,7 +98,9 @@ public sealed class NativeGame : MonoBehaviour
         center=new GUIStyle(label){alignment=TextAnchor.MiddleCenter}; button=new GUIStyle(GUI.skin.button){fontSize=14,fontStyle=FontStyle.Bold}; button.normal.textColor=Color.white;
         card=new GUIStyle(GUI.skin.box); card.normal.background=MakeTexture(new Color(.08f,.16f,.18f)); selectedStyle=new GUIStyle(card); selectedStyle.normal.background=MakeTexture(new Color(.25f,.34f,.20f));
     }
-    private Texture2D Tex(string name) { if(string.IsNullOrEmpty(name)) return null; Texture2D t; if(!textures.TryGetValue(name,out t)){t=Resources.Load<Texture2D>("Sprites/"+name); textures[name]=t;} return t; }
+    private Texture2D Tex(string name) { if(string.IsNullOrEmpty(name)) return null; Texture2D t; if(!textures.TryGetValue(name,out t)){t=Resources.Load<Texture2D>(name.Contains("/")?name:"Sprites/"+name); textures[name]=t;} return t; }
+    private string UnitName(UnitDef d){return artPack==1&&d.id=="koromon"?"비트버드":d.name;}
+    private string UnitSprite(UnitDef d){return artPack==1&&d.id=="koromon"?"ArtVariants/Original/Bitbud-v1":d.sprite;}
     private UnitMeta Meta(string id){switch(id){
         case "koromon":return new UnitMeta("백신","용형",550,43,.8f,1);case "tsunomon":return new UnitMeta("데이터","야수형",430,43,.85f,3);case "mochimon":return new UnitMeta("백신","곤충형",690,32,.65f,1);case "tanemon":return new UnitMeta("데이터","식물형",460,29,.7f,3);case "pyocomon":return new UnitMeta("백신","조류형",440,36,.75f,3);case "tokomon":return new UnitMeta("백신","천사형",490,28,.7f,3);
         case "agumon":return new UnitMeta("백신","용형",600,48,.8f,1);case "gabumon":return new UnitMeta("데이터","야수형",460,49,.85f,4);case "tentomon":return new UnitMeta("백신","곤충형",760,36,.65f,1);case "palmon":return new UnitMeta("데이터","식물형",490,32,.7f,3);case "piyomon":return new UnitMeta("백신","조류형",530,43,.75f,3);case "patamon":return new UnitMeta("백신","천사형",570,35,.7f,3);
@@ -123,11 +125,12 @@ public sealed class NativeGame : MonoBehaviour
         GUI.Label(new Rect(245,490,390,35),"난이도",header);
         for(int i=0;i<3;i++){Rect r=new Rect(245+i*135,535,120,80);GUI.Box(r,GUIContent.none,i==difficulty?selectedStyle:card);if(Btn(new Rect(r.x+5,r.y+5,r.width-10,r.height-10),Difficulties[i]))difficulty=i;}
         GUI.Label(new Rect(245,630,390,50),difficulty==0?"AI 전투력 88% · 처음 플레이 추천":difficulty==1?"표준 전투력 · 기본 난이도":"AI 전투력 112% · 숙련자 추천",small);
+        GUI.Label(new Rect(245,680,390,30),"캐릭터 버전",header);if(Btn(new Rect(245,718,185,48),artPack==0?"✓ 디지몬 팬 버전":"디지몬 팬 버전")){artPack=0;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}if(Btn(new Rect(450,718,185,48),artPack==1?"✓ 오리지널 버전":"오리지널 버전")){artPack=1;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}
         GUI.Label(new Rect(700,280,970,35),"전설이 선택",header);
         for(int i=0;i<4;i++){Rect r=new Rect(700+i*235,325,210,300);GUI.Box(r,GUIContent.none,i==legend?selectedStyle:card);Portrait(new Rect(r.x+35,r.y+25,140,150),LegendSprites[i],"⌁");GUI.Label(new Rect(r.x+10,r.y+190,190,35),Legends[i],center);if(Btn(new Rect(r.x+25,r.y+235,160,45),i==legend?"선택됨":"선택"))legend=i;}
         GUI.Label(new Rect(700,650,970,40),"전설이는 전리품 회수와 승리 연출을 담당하며 능력치에는 영향을 주지 않습니다.",small);
-        if(Btn(new Rect(710,760,500,80),Difficulties[difficulty]+" · 솔로 리그 입장")){lobby=false;Save();}
-        if(Btn(new Rect(1230,760,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
+        if(Btn(new Rect(710,795,500,80),Difficulties[difficulty]+" · "+(artPack==0?"디지몬":"오리지널")+" 리그 입장")){lobby=false;Save();}
+        if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
     }
 
     private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawShop();if(showCarousel)DrawCarousel();}
@@ -182,21 +185,21 @@ public sealed class NativeGame : MonoBehaviour
         float x=322+f.pos.x*145,y=165+f.pos.y*81;Rect r=new Rect(x,y,112,70);
         if(f.hitFlash>0)DrawRect(new Rect(x-4,y-4,120,78),new Color(1,.22f,.16f,.75f));
         if(f.attackFlash>0)DrawRect(new Rect(x+35,y+26,95,8),f.enemy?new Color(1,.3f,.2f):accent);
-        Portrait(new Rect(x+8,y,62,54),f.unit.def.sprite);GUI.Label(new Rect(x+66,y+4,80,20),f.unit.def.name,small);
+        Portrait(new Rect(x+8,y,62,54),UnitSprite(f.unit.def));GUI.Label(new Rect(x+66,y+4,80,20),UnitName(f.unit.def),small);
         DrawRect(new Rect(x+8,y+57,100,8),new Color(.12f,.08f,.08f));DrawRect(new Rect(x+8,y+57,100*Mathf.Clamp01(f.hp/f.maxHp),8),f.enemy?new Color(.9f,.22f,.18f):new Color(.35f,.9f,.42f));if(!f.enemy&&GUI.Button(r,GUIContent.none,GUIStyle.none)){if(selectedItem>=0)Equip(f.unit);else inspectedUnit=f.unit;}
     }
-    private void DrawUnit(Rect r,Unit u,bool enemy){Texture2D t=Tex(u.def.sprite);if(t)GUI.DrawTexture(new Rect(r.x+7,r.y+2,62,55),t,ScaleMode.ScaleToFit,true);GUI.Label(new Rect(r.x+67,r.y+7,r.width-70,22),u.def.name,small);GUI.Label(new Rect(r.x+67,r.y+29,r.width-70,18),new string('★',u.star),small);GUI.Label(new Rect(r.x+67,r.y+49,r.width-70,18),(enemy?"적":u.def.role)+string.Concat(u.items.Select(i=>ItemIcons[i])),small);}
+    private void DrawUnit(Rect r,Unit u,bool enemy){Texture2D t=Tex(UnitSprite(u.def));if(t)GUI.DrawTexture(new Rect(r.x+7,r.y+2,62,55),t,ScaleMode.ScaleToFit,true);GUI.Label(new Rect(r.x+67,r.y+7,r.width-70,22),UnitName(u.def),small);GUI.Label(new Rect(r.x+67,r.y+29,r.width-70,18),new string('★',u.star),small);GUI.Label(new Rect(r.x+67,r.y+49,r.width-70,18),(enemy?"적":u.def.role)+string.Concat(u.items.Select(i=>ItemIcons[i])),small);}
     private void DrawRight()
     {
         DrawRect(new Rect(1360,108,540,710),panel);if(inspectedUnit!=null)DrawUnitDetail();else{GUI.Label(new Rect(1380,125,500,30),"리그 순위",header);string[] names={"나의 테이머","태일","매튜","소라","미나","리키","한솔","나리"};
         for(int i=0;i<8;i++){float y=170+i*55;GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0?selectedStyle:card);GUI.Label(new Rect(1395,y+8,35,28),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+8,250,28),names[i],label);GUI.Label(new Rect(1735,y+8,125,28),i==0?hp+" HP":Mathf.Max(0,100-round*i)+" HP",small);}}
         GUI.Label(new Rect(1380,635,500,30),"대기석",header);
-        for(int i=0;i<9;i++){Rect r=new Rect(1380+(i%5)*98,675+(i/5)*63,88,55);GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(bench[i]!=null){Portrait(new Rect(r.x+2,r.y+1,45,42),bench[i].def.sprite);GUI.Label(new Rect(r.x+42,r.y+3,43,27),bench[i].def.name,small);GUI.Label(new Rect(r.x+42,r.y+29,43,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
+        for(int i=0;i<9;i++){Rect r=new Rect(1380+(i%5)*98,675+(i/5)*63,88,55);GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(bench[i]!=null){Portrait(new Rect(r.x+2,r.y+1,45,42),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+42,r.y+3,43,27),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+42,r.y+29,43,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
         if(Btn(new Rect(1380,780,235,38),"선택 유닛 판매",selectedBench>=0)){Unit u=bench[selectedBench];gold+=u.def.cost*(int)Mathf.Pow(3,u.star-1);pool[u.def.id]+=(int)Mathf.Pow(3,u.star-1);bench[selectedBench]=null;if(inspectedUnit==u)inspectedUnit=null;selectedBench=-1;Save();}
     }
     private void DrawUnitDetail()
     {
-        Unit u=inspectedUnit;UnitMeta m=Meta(u.def.id);if(Btn(new Rect(1825,120,55,38),"×")){inspectedUnit=null;return;}Portrait(new Rect(1390,145,150,145),u.def.sprite);GUI.Label(new Rect(1560,150,250,34),u.def.name,header);GUI.Label(new Rect(1560,190,280,26),new string('★',u.star)+$"  ·  {u.def.cost}코스트",label);GUI.Label(new Rect(1560,225,280,25),$"{m.attr} · {m.family} · {u.def.role}",label);
+        Unit u=inspectedUnit;UnitMeta m=Meta(u.def.id);if(Btn(new Rect(1825,120,55,38),"×")){inspectedUnit=null;return;}Portrait(new Rect(1390,145,150,145),UnitSprite(u.def));GUI.Label(new Rect(1560,150,250,34),UnitName(u.def),header);GUI.Label(new Rect(1560,190,280,26),new string('★',u.star)+$"  ·  {u.def.cost}코스트",label);GUI.Label(new Rect(1560,225,280,25),$"{m.attr} · {m.family} · {u.def.role}",label);
         float mult=Mathf.Pow(1.8f,u.star-1);GUI.Label(new Rect(1390,305,470,28),"유닛 능력치",header);DetailStat(1390,342,"체력",Mathf.RoundToInt(m.hp*mult).ToString());DetailStat(1510,342,"공격력",Mathf.RoundToInt(m.atk*Mathf.Pow(1.5f,u.star-1)).ToString());DetailStat(1630,342,"공속",m.speed.ToString("0.00"));DetailStat(1750,342,"사거리",m.range.ToString());
         GUI.Label(new Rect(1390,405,470,28),"기여 시너지",header);int attrCount=SynergyCount(m.attr),familyCount=SynergyCount(m.family),roleCount=board.Count(x=>x!=null&&x.def.role==u.def.role);SynergyLine(1390,442,m.attr,attrCount,2,"같은 속성 2명부터 속성 효과 활성화");SynergyLine(1390,493,m.family,familyCount,2,"같은 계열 2/4명에서 전투 보너스 강화");SynergyLine(1390,544,u.def.role,roleCount,2,RoleDescription(u.def.role));
         GUI.Label(new Rect(1390,595,120,24),"장착 장비",small);for(int i=0;i<u.items.Count;i++){int item=u.items[i];GUI.Button(new Rect(1510+i*165,588,155,38),new GUIContent(ItemIcons[item]+" "+ItemNames[item],ItemNames[item]+"\n"+ItemDescriptions[item]),button);}
@@ -225,7 +228,7 @@ public sealed class NativeGame : MonoBehaviour
         DrawRect(new Rect(20,838,1880,222),new Color(.045f,.10f,.12f));GUI.Label(new Rect(40,855,230,30),"디지몬 모집",header);
         GUI.Label(new Rect(270,842,800,22),ShopOddsText(),small);
         if(Btn(new Rect(40,895,145,42),"새로고침 2G",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,42),shopLocked?"잠금 유지 중":"상점 잠금")){shopLocked=!shopLocked;Save();}
-        for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);GUI.Box(r,GUIContent.none,card);UnitDef d=shop[i];if(d!=null){Portrait(new Rect(r.x+8,r.y+8,105,100),d.sprite);GUI.Label(new Rect(r.x+112,r.y+12,105,28),d.name,label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
+        for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);GUI.Box(r,GUIContent.none,card);UnitDef d=shop[i];if(d!=null){Portrait(new Rect(r.x+8,r.y+8,105,100),UnitSprite(d));GUI.Label(new Rect(r.x+112,r.y+12,105,28),UnitName(d),label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
         string action=RoundType()=="초밥집"?RoundLabel()+" 선택창 열기":RoundLabel()+" 전투 시작";if(Btn(new Rect(1530,875,330,135),battling?"전투 진행 중":action,!battling&&(RoundType()=="초밥집"||board.Any(u=>u!=null)))){if(RoundType()=="초밥집")OpenCarousel();else StartCoroutine(Battle());}
     }
     private string ShopOddsText(){return $"LV.{level} 배치 {board.Count(u=>u!=null)}/{level}  ·  상점 확률  1G {ShopOdds[level-1,0]}%  2G {ShopOdds[level-1,1]}%  3G {ShopOdds[level-1,2]}%  4G {ShopOdds[level-1,3]}%  5G {ShopOdds[level-1,4]}%";}
@@ -233,7 +236,7 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawCarousel()
     {
         DrawRect(new Rect(360,220,1200,610),new Color(.025f,.065f,.075f,.98f));GUI.Label(new Rect(520,255,880,55),RoundLabel()+" · 디지타마 광장",title);GUI.Label(new Rect(520,315,880,32),"유닛과 장비 묶음 하나를 선택하세요",center);
-        for(int i=0;i<3;i++){Rect r=new Rect(440+i*360,380,320,310);GUI.Box(r,GUIContent.none,card);UnitDef d=carouselUnits[i];if(d!=null)Portrait(new Rect(r.x+75,r.y+20,170,145),d.sprite);GUI.Label(new Rect(r.x+20,r.y+170,280,32),d==null?"골드 보급":d.name,header);GUI.Label(new Rect(r.x+20,r.y+207,280,30),ItemIcons[carouselItems[i]]+" "+ItemNames[carouselItems[i]],center);if(Btn(new Rect(r.x+45,r.y+250,230,45),"선택"))ChooseCarousel(i);}
+        for(int i=0;i<3;i++){Rect r=new Rect(440+i*360,380,320,310);GUI.Box(r,GUIContent.none,card);UnitDef d=carouselUnits[i];if(d!=null)Portrait(new Rect(r.x+75,r.y+20,170,145),UnitSprite(d));GUI.Label(new Rect(r.x+20,r.y+170,280,32),d==null?"골드 보급":UnitName(d),header);GUI.Label(new Rect(r.x+20,r.y+207,280,30),ItemIcons[carouselItems[i]]+" "+ItemNames[carouselItems[i]],center);if(Btn(new Rect(r.x+45,r.y+250,230,45),"선택"))ChooseCarousel(i);}
     }
     private void ChooseCarousel(int index){UnitDef d=carouselUnits[index];if(d!=null){if(!GrantUnit(d))gold+=d.cost;}else gold+=Mathf.Max(2,round/7);inventory.Add(carouselItems[index]);showCarousel=false;round++;if(!shopLocked)RollShop();Save();}
 
