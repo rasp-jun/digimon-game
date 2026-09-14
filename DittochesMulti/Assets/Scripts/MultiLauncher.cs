@@ -34,6 +34,7 @@ public sealed class MultiLauncher : MonoBehaviour
     readonly System.Collections.Generic.List<Texture2D> uiTextures = new System.Collections.Generic.List<Texture2D>();
     readonly System.Collections.Generic.Dictionary<string,string> originalNames = new System.Collections.Generic.Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
     readonly System.Collections.Generic.Dictionary<string,string> originalSprites = new System.Collections.Generic.Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
+    readonly System.Collections.Generic.Dictionary<string,string> fanUnitSprites = new System.Collections.Generic.Dictionary<string,string>{{"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"}};
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Boot()
@@ -407,7 +408,13 @@ public sealed class MultiLauncher : MonoBehaviour
         UnitDef def=Def(id); if(def==null) return null;
         string path="Sprites/"+def.sprite;
         if(artPack==1 && originalSprites.TryGetValue(id,out string originalPath)) path=originalPath;
+        else if(artPack==0 && fanUnitSprites.TryGetValue(id,out string fanPath)) path=fanPath;
         if(!textures.TryGetValue(path,out Texture2D texture)) { texture=Resources.Load<Texture2D>(path); textures[path]=texture; }
+        if(texture==null && path!="Sprites/"+def.sprite)
+        {
+            path="Sprites/"+def.sprite;
+            if(!textures.TryGetValue(path,out texture)) { texture=Resources.Load<Texture2D>(path); textures[path]=texture; }
+        }
         return texture;
     }
 

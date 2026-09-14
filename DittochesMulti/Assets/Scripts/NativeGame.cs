@@ -43,6 +43,7 @@ public sealed class NativeGame : MonoBehaviour
     private static readonly Dictionary<string,UnitDef> RosterById=Roster.ToDictionary(unit=>unit.id);
     private static readonly Dictionary<string,string> OriginalNames=new Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
     private static readonly Dictionary<string,string> OriginalSprites=new Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
+    private static readonly Dictionary<string,string> FanUnitSprites=new Dictionary<string,string>{{"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"}};
     private static readonly Dictionary<string,string> SkillNames=new Dictionary<string,string>{
         {"koromon","용기 펄스"},{"tsunomon","프리즘 볼트"},{"mochimon","데이터 장벽"},{"tanemon","생장 신호"},{"pyocomon","버스트 깃털"},{"tokomon","희망 파동"},
         {"agumon","화염 압축"},{"gabumon","빙결 탄환"},{"tentomon","전도성 갑각"},{"palmon","회복 덩굴"},{"piyomon","나선 화염"},{"patamon","상승 기류"},
@@ -110,7 +111,7 @@ public sealed class NativeGame : MonoBehaviour
     }
     private Texture2D Tex(string name) { if(string.IsNullOrEmpty(name)) return null; Texture2D t; if(!textures.TryGetValue(name,out t)){t=Resources.Load<Texture2D>(name.Contains("/")?name:"Sprites/"+name); textures[name]=t;} return t; }
     private string UnitName(UnitDef d){string value;return artPack==1&&OriginalNames.TryGetValue(d.id,out value)?value:d.name;}
-    private string UnitSprite(UnitDef d){string value;return artPack==1&&OriginalSprites.TryGetValue(d.id,out value)?value:d.sprite;}
+    private string UnitSprite(UnitDef d){string value;if(artPack==1&&OriginalSprites.TryGetValue(d.id,out value))return value;if(artPack==0&&FanUnitSprites.TryGetValue(d.id,out value)&&Tex(value)!=null)return value;return d.sprite;}
     private string SkillName(UnitDef d){string value;return SkillNames.TryGetValue(d.id,out value)?value:"데이터 방출";}
     private UnitMeta Meta(string id){switch(id){
         case "koromon":return new UnitMeta("백신","용형",550,43,.8f,1);case "tsunomon":return new UnitMeta("데이터","야수형",430,43,.85f,3);case "mochimon":return new UnitMeta("백신","곤충형",690,32,.65f,1);case "tanemon":return new UnitMeta("데이터","식물형",460,29,.7f,3);case "pyocomon":return new UnitMeta("백신","조류형",440,36,.75f,3);case "tokomon":return new UnitMeta("백신","천사형",490,28,.7f,3);
