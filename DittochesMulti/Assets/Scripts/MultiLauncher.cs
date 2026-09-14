@@ -21,23 +21,15 @@ public sealed class MultiLauncher : MonoBehaviour
     string profile = "", selectedArea = "";
     int selectedSlot = -1;
     bool busy, solo, confirmLeave, connectionError;
-    int lobbyTab, codexPage, artPack;
     float nextPoll, receivedAt;
     State state;
     Catalog catalog;
     NativeGame soloGame;
-    GUIStyle title, heroTitle, text, small, button, goldButton, navButton, box, eyebrow, centered, stat, input;
-    Texture2D lobbyBackground, lobbyMascot;
+    GUIStyle title, text, small, button, box, eyebrow, centered, stat, input;
     readonly Color navy = new Color(.025f,.043f,.075f), surface = new Color(.045f,.075f,.115f), surface2 = new Color(.065f,.105f,.15f);
     readonly Color gold = new Color(.79f,.63f,.30f), paleGold = new Color(.94f,.84f,.57f), cyan = new Color(.22f,.72f,.79f), muted = new Color(.57f,.65f,.72f);
     readonly System.Collections.Generic.Dictionary<string, Texture2D> textures = new System.Collections.Generic.Dictionary<string, Texture2D>();
     readonly System.Collections.Generic.List<Texture2D> uiTextures = new System.Collections.Generic.List<Texture2D>();
-    readonly System.Collections.Generic.Dictionary<string,string> originalNames = new System.Collections.Generic.Dictionary<string,string>{{"koromon","비트버드"},{"tsunomon","프리즈마이트"},{"mochimon","모스바이트"}};
-    readonly System.Collections.Generic.Dictionary<string,string> originalSprites = new System.Collections.Generic.Dictionary<string,string>{{"koromon","ArtVariants/Original/Bitbud-v1"},{"tsunomon","ArtVariants/Original/Prismite-v1"},{"mochimon","ArtVariants/Original/Mossbyte-v1"}};
-    readonly System.Collections.Generic.Dictionary<string,string> fanUnitSprites = new System.Collections.Generic.Dictionary<string,string>{
-        {"koromon","ArtVariants/LicensedFanArt/Koromon-unit-v2"},{"tsunomon","ArtVariants/LicensedFanArt/Tsunomon-unit-v2"},{"mochimon","ArtVariants/LicensedFanArt/Mochimon-unit-v2"},
-        {"tanemon","ArtVariants/LicensedFanArt/Tanemon-unit-v2"},{"pyocomon","ArtVariants/LicensedFanArt/Pyocomon-unit-v2"},{"tokomon","ArtVariants/LicensedFanArt/Tokomon-unit-v2"}
-    };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Boot()
@@ -58,11 +50,6 @@ public sealed class MultiLauncher : MonoBehaviour
         server = PlayerPrefs.GetString("multi.server", server);
         nickname = PlayerPrefs.GetString("multi.name." + profile, nickname);
         catalog = JsonUtility.FromJson<Catalog>(Resources.Load<TextAsset>("MultiRoster").text);
-        artPack = Mathf.Clamp(PlayerPrefs.GetInt("multiSoloArtPack",0),0,1);
-        lobbyBackground = Resources.Load<Texture2D>("UI/file-island-lobby-v2");
-        if (lobbyBackground == null) lobbyBackground = Resources.Load<Texture2D>("UI/file-island-arena-v1");
-        lobbyMascot = Resources.Load<Texture2D>("ArtVariants/LicensedFanArt/Koromon-v1");
-        if (lobbyMascot == null) lobbyMascot = Resources.Load<Texture2D>("Sprites/Koromon");
     }
 
     public void ReturnToMulti()
@@ -158,7 +145,6 @@ public sealed class MultiLauncher : MonoBehaviour
     {
         if (title != null) return;
         title = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft }; title.normal.textColor = paleGold;
-        heroTitle = new GUIStyle(title) { fontSize = 54 }; heroTitle.normal.textColor = Color.white;
         text = new GUIStyle(GUI.skin.label) { fontSize = 19, wordWrap = true }; text.normal.textColor = new Color(.88f,.91f,.94f);
         small = new GUIStyle(text) { fontSize = 15 }; small.normal.textColor = muted;
         eyebrow = new GUIStyle(small) { fontSize = 14, fontStyle = FontStyle.Bold }; eyebrow.normal.textColor = gold;
@@ -167,8 +153,6 @@ public sealed class MultiLauncher : MonoBehaviour
         button = new GUIStyle(GUI.skin.button) { fontSize=17,fontStyle=FontStyle.Bold,wordWrap=true,padding=new RectOffset(14,14,8,8),border=new RectOffset(1,1,1,1) };
         button.normal.background=UiTex(new Color(.075f,.13f,.18f)); button.hover.background=UiTex(new Color(.12f,.22f,.27f)); button.active.background=UiTex(new Color(.20f,.25f,.17f));
         button.focused.background=button.hover.background; button.normal.textColor=new Color(.94f,.91f,.82f); button.hover.textColor=Color.white; button.active.textColor=paleGold; button.focused.textColor=Color.white;
-        goldButton = new GUIStyle(button); goldButton.normal.background=UiTex(new Color(.76f,.49f,.16f)); goldButton.hover.background=UiTex(new Color(.91f,.64f,.24f)); goldButton.active.background=UiTex(new Color(.64f,.39f,.10f)); goldButton.normal.textColor=Color.white; goldButton.hover.textColor=Color.white;
-        navButton = new GUIStyle(button) { fontSize=18,alignment=TextAnchor.MiddleCenter };
         box = new GUIStyle(GUI.skin.box) { fontSize=18 }; box.normal.background=UiTex(surface);
         input = new GUIStyle(GUI.skin.textField) { fontSize=18,padding=new RectOffset(14,14,8,8),border=new RectOffset(1,1,1,1) };
         input.normal.background=UiTex(new Color(.025f,.05f,.08f)); input.focused.background=UiTex(new Color(.04f,.085f,.115f));
@@ -190,12 +174,6 @@ public sealed class MultiLauncher : MonoBehaviour
     {
         bool previous = GUI.enabled; GUI.enabled = previous && enabled && !busy;
         bool clicked = GUI.Button(rect, label, button); GUI.enabled = previous; return clicked;
-    }
-
-    bool GoldBtn(Rect rect, string label)
-    {
-        bool previous=GUI.enabled; GUI.enabled=previous&&!busy;
-        bool clicked=GUI.Button(rect,label,goldButton); GUI.enabled=previous; return clicked;
     }
 
     void Panel(Rect rect, Color color)
@@ -247,178 +225,40 @@ public sealed class MultiLauncher : MonoBehaviour
 
     void DrawLobby()
     {
-        if(lobbyTab==0) DrawHomeLobby();
-        else
-        {
-            DrawLobbyBackground(.20f);
-            DrawTopNavigation();
-            if(lobbyTab==1) DrawPlayLobby();
-            else if(lobbyTab==2) DrawCodexLobby();
-            else DrawServerLobby();
-        }
-    }
-
-    void DrawLobbyBackground(float opacity)
-    {
-        if(lobbyBackground!=null)
-        {
-            Color old=GUI.color; GUI.color=new Color(1,1,1,opacity);
-            GUI.DrawTexture(new Rect(0,77,1600,867),lobbyBackground,ScaleMode.ScaleAndCrop);
-            GUI.color=old;
-        }
-        Panel(new Rect(0,77,1600,867),new Color(.01f,.025f,.055f,.40f));
-    }
-
-    void DrawTopNavigation()
-    {
-        Panel(new Rect(0,0,1600,78),new Color(.012f,.027f,.047f,.98f));
-        GUI.Label(new Rect(50,13,260,55),"DITTOCHES",title);
-        string[] tabs={"로비","게임하기","디지몬 도감"};
-        for(int i=0;i<tabs.Length;i++)
-        {
-            Rect r=new Rect(340+i*160,18,145,44);
-            if(i==lobbyTab) { Panel(r,new Color(gold.r,gold.g,gold.b,.92f)); GUI.Label(r,tabs[i],stat); }
-            else if(GUI.Button(r,tabs[i],navButton)) lobbyTab=i;
-        }
-        GUI.Label(new Rect(1020,19,170,42),state==null?"테이머":"테이머 · "+state.name,centered);
-        Rect serverTab=new Rect(1370,18,180,44);
-        if(lobbyTab==3) { Panel(serverTab,new Color(gold.r,gold.g,gold.b,.92f)); GUI.Label(serverTab,"서버 설정",stat); }
-        else if(GUI.Button(serverTab,"서버 설정",navButton)) lobbyTab=3;
-        Panel(new Rect(0,77,1600,1),new Color(gold.r,gold.g,gold.b,.55f));
-    }
-
-    void DrawHomeLobby()
-    {
-        DrawLobbyBackground(1f); DrawLobbyAtmosphere(); DrawTopNavigation();
-        Panel(new Rect(0,78,860,866),new Color(.006f,.018f,.038f,.78f));
-        GUI.Label(new Rect(85,180,560,28),"FILE ISLAND  /  새로운 모험의 시작",eyebrow);
-        GUI.Label(new Rect(85,238,660,80),"디지몬 오토체스",heroTitle);
-        GUI.Label(new Rect(88,330,590,75),"작은 디지몬의 가능성은 무한하다.\n모으고, 배치하고, 나만의 팀으로 승리하세요.",text);
-        if(GoldBtn(new Rect(88,455,310,72),"게임하기   →")) lobbyTab=1;
-        GUI.Label(new Rect(88,545,500,28),"일반 대전  ·  랭크 대전  ·  솔로 플레이",small);
-        Rect info=new Rect(88,650,575,112); Card(info,new Color(.018f,.055f,.075f,.94f),new Color(cyan.r,cyan.g,cyan.b,.55f));
-        GUI.Label(new Rect(110,668,520,25),"팀을 완성하는 건 당신의 선택",eyebrow);
-        GUI.Label(new Rect(110,700,520,50),"같은 디지몬 3마리를 모아 승급하고\n레벨을 올려 더 강력한 디지몬을 만나세요.",text);
-        Texture2D mascot=LobbyPortrait("koromon")??lobbyMascot;
-        if(mascot!=null) GUI.DrawTexture(new Rect(1010,330,310,310),mascot,ScaleMode.ScaleToFit,true);
-        Rect legendCard=new Rect(980,665,390,95); Card(legendCard,new Color(.015f,.045f,.065f,.95f),new Color(cyan.r,cyan.g,cyan.b,.45f));
-        GUI.Label(new Rect(1002,678,350,22),"MY LITTLE LEGEND",eyebrow);
-        GUI.Label(new Rect(1002,707,350,40),LobbyName(catalog.units[0]),title);
-        GUI.Label(new Rect(50,895,550,30),"FILE ISLAND LEAGUE    /    DIGITAL FRONTIER 0.3",eyebrow);
-        GUI.Label(new Rect(1280,895,260,30),"●  솔로 플레이 가능",small);
-        if(Btn(new Rect(1370,820,180,48),artPack==0?"디지몬 버전":"오리지널 버전")) SetArtPack(1-artPack);
-    }
-
-    void DrawLobbyAtmosphere()
-    {
-        float time=Time.unscaledTime;
-        for(int i=0;i<14;i++)
-        {
-            float x=880+(i*83%650), baseY=120+(i*137%700), y=baseY+Mathf.Sin(time*(.35f+i*.025f)+i)*18f;
-            float size=3+(i%3)*2, alpha=.16f+(i%4)*.045f;
-            Panel(new Rect(x,y,size,size),new Color(.35f,.9f,1f,alpha));
-        }
-        Panel(new Rect(0,78,1600,5),new Color(gold.r,gold.g,gold.b,.14f));
-    }
-
-    void DrawPlayLobby()
-    {
-        GUI.Label(new Rect(70,105,500,30),"GAME MODE",eyebrow);
-        GUI.Label(new Rect(70,135,900,55),"플레이할 모드를 선택하세요",title);
-        string[] labels = { "솔로 플레이", "일반 대전", "랭크 대전" };
-        string[] tags = { "SOLO", "NORMAL", "RANKED" };
-        string[] descriptions = { "나만의 속도로 즐기는 파일 아일랜드 리그\n난이도와 캐릭터 버전을 선택할 수 있습니다.", "부담 없이 즐기는 온라인 1대1\n승패에 따른 RP 변동이 없습니다.", "실력을 겨루는 온라인 1대1\n승패가 서버 랭크에 반영됩니다." };
-        bool queued = state != null && !string.IsNullOrEmpty(state.queue);
-        for (int i=0;i<3;i++)
-        {
-            float x=70+i*495; Rect mode=new Rect(x,225,460,470); Color line=i==2?gold:i==1?cyan:new Color(.45f,.58f,.68f);
-            Card(mode,new Color(surface2.r,surface2.g,surface2.b,.96f),line); Panel(new Rect(x,225,460,7),line);
-            GUI.Label(new Rect(x+30,260,400,25),tags[i],eyebrow); GUI.Label(new Rect(x+30,300,400,55),labels[i],title);
-            GUI.Label(new Rect(x+30,380,400,90),descriptions[i],text);
-            GUI.Label(new Rect(x+30,505,400,30),i==0?"AI 7명 · 서버 불필요":i==1?"2 PLAYERS · CASUAL":"2 PLAYERS · ELO RATING",small);
-            if(Btn(new Rect(x+30,595,400,62),i==0?"솔로 리그 입장":"대전 찾기",!queued&&(i==0||token.Length>0)))
-            { if(i==0) EnterSolo(); else Send("/queue",new Command{mode=i==1?"normal":"ranked"}); }
-        }
-        if(state==null) GUI.Label(new Rect(70,735,1100,35),"온라인 대전은 먼저 서버 설정에서 접속해 주세요.",small);
-        else GUI.Label(new Rect(70,735,1100,35),$"● ONLINE  {state.name}  ·  {state.rating} RP",text);
-        if(queued)
-        {
-            Card(new Rect(70,800,1460,70),new Color(.05f,.11f,.14f),cyan);
-            GUI.Label(new Rect(105,817,1050,35),(state.queue=="ranked"?"RANKED":"NORMAL")+" · 상대 테이머를 찾는 중…",text);
-            if(Btn(new Rect(1240,812,260,46),"매칭 취소")) Send("/cancel");
-        }
-    }
-
-    void DrawServerLobby()
-    {
-        GUI.Label(new Rect(70,105,500,30),"ONLINE CONNECTION",eyebrow);
-        GUI.Label(new Rect(70,135,900,55),"서버 설정",title);
-        Rect connect = new Rect(70,220,1460,300); Card(connect,new Color(surface.r,surface.g,surface.b,.97f),new Color(gold.r,gold.g,gold.b,.55f));
-        GUI.Label(new Rect(105,250,250,28),"SERVER ADDRESS",eyebrow); GUI.Label(new Rect(795,250,250,28),"TAMER NAME",eyebrow);
-        GUI.enabled=!busy&&token.Length==0;
-        server=GUI.TextField(new Rect(105,290,650,54),server,200,input); nickname=GUI.TextField(new Rect(795,290,375,54),nickname,20,input);
+        GUI.Label(new Rect(70, 24, 750, 50), "DITTOCHES", title); GUI.Label(new Rect(257,31,350,36), "MULTI", eyebrow);
+        GUI.Label(new Rect(70, 103, 500, 25), "ONLINE CONNECTION", eyebrow);
+        GUI.Label(new Rect(70, 132, 1400, 35), "파일 아일랜드에서 펼쳐지는 솔로 리그와 실시간 온라인 대전", text);
+        Rect connect = new Rect(70,190,1460,210); Card(connect,surface,new Color(gold.r,gold.g,gold.b,.55f));
+        GUI.Label(new Rect(100,210,250,28), "SERVER ADDRESS", eyebrow); GUI.Label(new Rect(790,210,250,28), "TAMER NAME", eyebrow);
+        GUI.enabled = !busy && token.Length == 0;
+        server = GUI.TextField(new Rect(100,247,655,48),server,200,input); nickname = GUI.TextField(new Rect(790,247,380,48),nickname,20,input);
         GUI.enabled = true;
         if (token.Length == 0)
-        { if (Btn(new Rect(1200,290,285,54),"서버 접속")) Connect(); }
-        else if (Btn(new Rect(1200,290,285,54),"접속 해제",string.IsNullOrEmpty(state.queue)))
+        { if (Btn(new Rect(1200,247,285,48),"서버 접속")) Connect(); }
+        else if (Btn(new Rect(1200,247,285,48),"접속 해제",string.IsNullOrEmpty(state.queue)))
         { token = ""; state = null; notice = "접속을 해제했습니다."; }
-        GUI.Label(new Rect(105,390,1070,40),state==null?"로컬 127.0.0.1:7777 · 다른 기기는 서버 PC의 IP 주소를 사용하세요":$"● ONLINE   {state.name}   ·   {state.rating} RP",small);
-        if(state!=null) Pill(new Rect(1265,385,220,44),state.rating+" RP",gold);
-        GUI.Label(new Rect(105,455,1320,40),notice,text);
-    }
-
-    void DrawCodexLobby()
-    {
-        GUI.Label(new Rect(70,105,500,30),"DIGIMON CODEX",eyebrow);
-        GUI.Label(new Rect(70,135,900,55),"디지몬 도감",title);
-        GUI.Label(new Rect(70,195,1100,35),"현재 로스터의 디지몬과 역할군을 확인하세요.",text);
-        int pageSize=15, pageCount=Mathf.CeilToInt(catalog.units.Length/(float)pageSize);
-        codexPage=Mathf.Clamp(codexPage,0,pageCount-1);
-        int start=codexPage*pageSize, count=Mathf.Min(pageSize,catalog.units.Length-start);
-        GUI.Label(new Rect(1180,145,170,35),artPack==0?"디지몬 버전":"오리지널 버전",centered);
-        if(Btn(new Rect(1360,138,170,45),"버전 전환")) SetArtPack(1-artPack);
-        for(int i=0;i<count;i++)
+        GUI.Label(new Rect(100,325,1070,40),state == null ? "로컬  127.0.0.1:7777   ·   다른 기기는 서버 PC의 IP 주소를 사용하세요" : $"●  ONLINE    {state.name}    ·    {state.rating} RP",small);
+        if(state!=null) Pill(new Rect(1265,319,220,40),state.rating+" RP",gold);
+        string[] labels = { "솔로 플레이", "일반 대전", "랭크 대전" };
+        string[] tags = { "SOLO", "NORMAL", "RANKED" };
+        string[] descriptions = { "나만의 속도로 즐기는 리그\n난이도와 전설이를 선택하세요.", "부담 없이 즐기는 온라인 1대1\n승패에 따른 RP 변동이 없습니다.", "실력을 겨루는 온라인 1대1\n승패가 서버 랭크에 반영됩니다." };
+        bool queued = state != null && !string.IsNullOrEmpty(state.queue);
+        for (int i = 0; i < 3; i++)
         {
-            int col=i%5,row=i/5; Rect r=new Rect(70+col*294,260+row*190,270,165); UnitDef def=catalog.units[start+i];
-            Card(r,new Color(surface2.r,surface2.g,surface2.b,.96f),new Color(cyan.r,cyan.g,cyan.b,.35f));
-            Texture2D portrait=LobbyPortrait(def.id);
-            if(portrait!=null) GUI.DrawTexture(new Rect(r.x+15,r.y+15,115,105),portrait,ScaleMode.ScaleToFit,true);
-            GUI.Label(new Rect(r.x+140,r.y+20,120,32),LobbyName(def),text);
-            GUI.Label(new Rect(r.x+140,r.y+55,120,28),def.role,eyebrow);
-            GUI.Label(new Rect(r.x+140,r.y+90,120,28),def.cost+" GOLD",small);
+            float x=70+i*495; Rect mode=new Rect(x,440,460,400); Color modeLine=i==2?gold:i==1?cyan:new Color(.45f,.58f,.68f);
+            Card(mode,surface2,modeLine); Panel(new Rect(x,440,460,7),modeLine);
+            GUI.Label(new Rect(x+30,475,400,25),tags[i],eyebrow); GUI.Label(new Rect(x+30,507,400,55),labels[i],title);
+            GUI.Label(new Rect(x+30,585,400,85),descriptions[i],text);
+            GUI.Label(new Rect(x+30,686,400,30),i==0?"AI 7명  ·  서버 불필요":i==1?"2 PLAYERS  ·  CASUAL":"2 PLAYERS  ·  ELO RATING",small);
+            if (Btn(new Rect(x+30,750,400,58),i==0?"솔로 리그 입장":"대전 찾기",!queued&&(i==0||token.Length>0)))
+            { if (i == 0) EnterSolo(); else Send("/queue", new Command { mode = i == 1 ? "normal" : "ranked" }); }
         }
-        if(Btn(new Rect(610,850,150,48),"← 이전",codexPage>0)) codexPage--;
-        GUI.Label(new Rect(770,852,160,44),$"{codexPage+1} / {pageCount}",centered);
-        if(Btn(new Rect(940,850,150,48),"다음 →",codexPage<pageCount-1)) codexPage++;
-        if(artPack==1) GUI.Label(new Rect(1120,850,410,48),"오리지널 캐릭터는 현재 3종부터 순차 제작 중",small);
-    }
-
-    void SetArtPack(int value)
-    {
-        artPack=Mathf.Clamp(value,0,1);
-        PlayerPrefs.SetInt("multiSoloArtPack",artPack); PlayerPrefs.Save();
-        notice=artPack==0?"디지몬 팬 버전으로 전환했습니다.":"오리지널 캐릭터 버전으로 전환했습니다.";
-    }
-
-    string LobbyName(UnitDef def)
-    {
-        if(artPack==1 && originalNames.TryGetValue(def.id,out string value)) return value;
-        return def.name;
-    }
-
-    Texture2D LobbyPortrait(string id)
-    {
-        UnitDef def=Def(id); if(def==null) return null;
-        string path="Sprites/"+def.sprite;
-        if(artPack==1 && originalSprites.TryGetValue(id,out string originalPath)) path=originalPath;
-        else if(artPack==0 && fanUnitSprites.TryGetValue(id,out string fanPath)) path=fanPath;
-        if(!textures.TryGetValue(path,out Texture2D texture)) { texture=Resources.Load<Texture2D>(path); textures[path]=texture; }
-        if(texture==null && path!="Sprites/"+def.sprite)
+        if (queued)
         {
-            path="Sprites/"+def.sprite;
-            if(!textures.TryGetValue(path,out texture)) { texture=Resources.Load<Texture2D>(path); textures[path]=texture; }
+            Card(new Rect(70,862,1460,65),new Color(.05f,.11f,.14f),cyan);
+            GUI.Label(new Rect(105,877,1050,35),(state.queue=="ranked"?"RANKED":"NORMAL")+"  ·  상대 테이머를 찾는 중…",text);
+            if (Btn(new Rect(1240,871,260,46),"매칭 취소")) Send("/cancel");
         }
-        return texture;
     }
 
     UnitDef Def(string id) { return Array.Find(catalog.units, u => u.id == id); }
