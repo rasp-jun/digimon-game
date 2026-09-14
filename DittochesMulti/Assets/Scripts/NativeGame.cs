@@ -6,6 +6,18 @@ using UnityEngine;
 
 public sealed class NativeGame : MonoBehaviour
 {
+    [Serializable] private sealed class UnitSave { public string id; public int star; public int[] items; }
+    [Serializable] private sealed class LootOrbSave { public float x, y; public int rarity, rewardType, amount; }
+    [Serializable] private sealed class SoloSave
+    {
+        public int version, difficulty, legend, gold, hp, level, xp, round;
+        public bool shopLocked;
+        public UnitSave[] board, bench;
+        public string[] shop;
+        public int[] inventory;
+        public LootOrbSave[] lootOrbs;
+    }
+
     private sealed class UnitDef
     {
         public string id, name, sprite, role; public int cost;
@@ -27,6 +39,8 @@ public sealed class NativeGame : MonoBehaviour
         new UnitDef("metalgreymon","메탈그레이몬",4,"Metal_Greymon","사수"),new UnitDef("weregarurumon","워가루몬",4,"Were_Garurumon","전사"),new UnitDef("lilimon","릴리몬",4,"Lilimon","지원"),new UnitDef("holyangemon","홀리엔젤몬",4,"Holy_Angemon","마법사"),new UnitDef("atlur","아트라캅테리몬",4,"Atlur_Kabuterimon","탱커"),new UnitDef("garudamon","가루다몬",4,"Garudamon","사수"),
         new UnitDef("herakle","헤라클레스캅테리몬",5,"Herakle_Kabuterimon","탱커"),new UnitDef("hououmon","페닉스몬",5,"Hououmon","마법사"),new UnitDef("wargreymon","워그레이몬",5,"War_Greymon","전사"),new UnitDef("metalgarurumon","메탈가루몬",5,"Metal_Garurumon","사수"),new UnitDef("rosemon","로제몬",5,"Rosemon","지원"),new UnitDef("seraphimon","세라피몬",5,"Seraphimon","마법사")
     };
+    private static readonly Dictionary<string,UnitDef> RosterById=Roster.ToDictionary(unit=>unit.id);
+    private const string SaveKey="multiSoloStateV1";
     private static readonly string[] Legends={"비트몬","코로몬","토코몬","어니몬"};
     private static readonly string[] LegendSprites={"","Koromon","Tokomon","Pyocomon"};
     private static readonly string[] Difficulties={"쉬움","보통","어려움"};
@@ -67,7 +81,7 @@ public sealed class NativeGame : MonoBehaviour
     {
         Application.targetFrameRate=60; Screen.sleepTimeout=SleepTimeout.NeverSleep;
         difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0);
-        ResetGame();
+        if(!Load())ResetGame();
     }
 
     private void InitPool() { int[] sizes={0,39,26,21,13,10}; pool.Clear(); foreach(UnitDef d in Roster) pool[d.id]=sizes[d.cost]; pool["koromon"]--; }
@@ -286,6 +300,57 @@ public sealed class NativeGame : MonoBehaviour
         bool changed=true;while(changed){changed=false;for(int star=1;star<3;star++){List<UnitRef> refs=FindUnits(id,star).Take(3).ToList();if(refs.Count<3)continue;UnitRef keep=refs[0];List<int> items=refs.SelectMany(r=>r.unit.items).ToList();foreach(UnitRef r in refs)ClearRef(r);keep.unit.star++;keep.unit.items.Clear();keep.unit.items.AddRange(items.Take(2));inventory.AddRange(items.Skip(2));PutRef(keep,keep.unit);changed=true;break;}}
         if(HasThree(id))for(int i=0;i<5;i++)if(shop[i]!=null&&shop[i].id==id){pool[id]++;shop[i]=null;}
     }
-    private void ResetGame(){Array.Clear(board,0,board.Length);Array.Clear(bench,0,bench.Length);inventory.Clear();lootOrbs.Clear();gold=0;hp=100;level=1;xp=0;round=1;selectedBench=selectedBoard=selectedItem=-1;shopLocked=false;legendPos=legendTarget=new Vector2(785,690);InitPool();board[3]=new Unit(Roster[0]);RollShop();Save();}
-    private void Save(){PlayerPrefs.SetInt("multiSoloDifficulty",difficulty);PlayerPrefs.SetInt("multiSoloLegend",legend);PlayerPrefs.SetInt("multiSoloRound",round);PlayerPrefs.SetInt("multiSoloGold",gold);PlayerPrefs.SetInt("multiSoloHp",hp);PlayerPrefs.SetInt("multiSoloLevel",level);PlayerPrefs.SetInt("multiSoloXp",xp);PlayerPrefs.SetInt("multiSoloShopLocked",shopLocked?1:0);PlayerPrefs.Save();}
+    private void ResetGame(){Array.Clear(board,0,board.Length);Array.Clear(bench,0,bench.Length);Array.Clear(shop,0,shop.Length);inventory.Clear();lootOrbs.Clear();gold=0;hp=100;level=1;xp=0;round=1;selectedBench=selectedBoard=selectedItem=-1;shopLocked=false;showCarousel=false;inspectedUnit=null;legendPos=legendTarget=new Vector2(785,690);InitPool();board[3]=new Unit(Roster[0]);RollShop();Save();}
+
+    private static UnitSave SaveUnit(Unit unit){return unit==null?null:new UnitSave{id=unit.def.id,star=unit.star,items=unit.items.ToArray()};}
+    private static Unit LoadUnit(UnitSave saved)
+    {
+        if(saved==null||string.IsNullOrEmpty(saved.id)||!RosterById.TryGetValue(saved.id,out UnitDef definition)||saved.star<1||saved.star>3)return null;
+        Unit unit=new Unit(definition){star=saved.star};
+        if(saved.items!=null)foreach(int item in saved.items.Take(2))if(item>=0&&item<ItemNames.Length)unit.items.Add(item);
+        return unit;
+    }
+
+    private void RebuildPool()
+    {
+        int[] sizes={0,39,26,21,13,10};pool.Clear();foreach(UnitDef definition in Roster)pool[definition.id]=sizes[definition.cost];
+        foreach(Unit unit in board.Concat(bench))
+            if(unit!=null)pool[unit.def.id]=Mathf.Max(0,pool[unit.def.id]-(int)Mathf.Pow(3,unit.star-1));
+        foreach(UnitDef definition in shop)
+            if(definition!=null)pool[definition.id]=Mathf.Max(0,pool[definition.id]-1);
+    }
+
+    private bool Load()
+    {
+        if(!PlayerPrefs.HasKey(SaveKey))return false;
+        try
+        {
+            SoloSave saved=JsonUtility.FromJson<SoloSave>(PlayerPrefs.GetString(SaveKey));
+            if(saved==null||saved.version!=1||saved.board==null||saved.board.Length!=board.Length||saved.bench==null||saved.bench.Length!=bench.Length||saved.shop==null||saved.shop.Length!=shop.Length)return false;
+            difficulty=Mathf.Clamp(saved.difficulty,0,Difficulties.Length-1);
+            legend=Mathf.Clamp(saved.legend,0,Legends.Length-1);
+            gold=Mathf.Max(0,saved.gold);hp=Mathf.Clamp(saved.hp,0,100);level=Mathf.Clamp(saved.level,1,9);xp=Mathf.Max(0,saved.xp);round=Mathf.Max(1,saved.round);shopLocked=saved.shopLocked;
+            for(int i=0;i<board.Length;i++)board[i]=LoadUnit(saved.board[i]);
+            for(int i=0;i<bench.Length;i++)bench[i]=LoadUnit(saved.bench[i]);
+            for(int i=0;i<shop.Length;i++)shop[i]=string.IsNullOrEmpty(saved.shop[i])?null:(RosterById.TryGetValue(saved.shop[i],out UnitDef definition)?definition:null);
+            inventory.Clear();
+            if(saved.inventory!=null)inventory.AddRange(saved.inventory.Where(item=>item>=0&&item<ItemNames.Length));
+            lootOrbs.Clear();
+            if(saved.lootOrbs!=null)foreach(LootOrbSave orb in saved.lootOrbs)
+                lootOrbs.Add(new LootOrb{pos=new Vector2(orb.x,orb.y),rarity=Mathf.Clamp(orb.rarity,0,2),rewardType=Mathf.Clamp(orb.rewardType,0,2),amount=Mathf.Max(0,orb.amount)});
+            selectedBench=selectedBoard=selectedItem=-1;showCarousel=false;inspectedUnit=null;legendPos=legendTarget=new Vector2(785,690);RebuildPool();return true;
+        }
+        catch(Exception error)
+        {
+            Debug.LogWarning("Solo save could not be loaded; starting a new game. "+error.Message);return false;
+        }
+    }
+
+    private void Save()
+    {
+        SoloSave saved=new SoloSave{version=1,difficulty=difficulty,legend=legend,gold=gold,hp=hp,level=level,xp=xp,round=round,shopLocked=shopLocked,
+            board=board.Select(SaveUnit).ToArray(),bench=bench.Select(SaveUnit).ToArray(),shop=shop.Select(unit=>unit==null?"":unit.id).ToArray(),inventory=inventory.ToArray(),
+            lootOrbs=lootOrbs.Select(orb=>new LootOrbSave{x=orb.pos.x,y=orb.pos.y,rarity=orb.rarity,rewardType=orb.rewardType,amount=orb.amount}).ToArray()};
+        PlayerPrefs.SetString(SaveKey,JsonUtility.ToJson(saved));PlayerPrefs.SetInt("multiSoloDifficulty",difficulty);PlayerPrefs.SetInt("multiSoloLegend",legend);PlayerPrefs.Save();
+    }
 }
