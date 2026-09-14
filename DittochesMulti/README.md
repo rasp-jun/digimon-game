@@ -14,6 +14,17 @@ Unity 로비에서 **솔로 플레이 / 일반 모드 / 랭크 모드**를 선�
 솔로 저장 키와 앱 ID를 기존 프로젝트와 분리했습니다. 기존 프로젝트 파일을 수정하지 않았습니다.
 솔로 진행 상황은 전장, 대기석, 상점, 장비 보관함과 전리품을 포함해 자동 저장되며 다음 실행 때 재개됩니다.
 
+## 0.3.5 게임오버·외부 에셋 복원 업데이트
+
+- 솔로 체력이 0이 되면 최종 라운드와 전투 통계를 보여주는 게임오버 화면이 열립니다.
+- 같은 난이도·캐릭터 버전으로 즉시 재도전하거나 솔로/멀티 로비로 돌아갈 수 있습니다.
+- `Tools/Sync-ExternalAssets.ps1`로 GitHub 밖의 이미지 에셋을 백업하거나 새 PC에 복원할 수 있습니다.
+
+```powershell
+.\Tools\Sync-ExternalAssets.ps1 -Mode Backup -AssetVault 'D:\Cloud\digimon-game-assets'
+.\Tools\Sync-ExternalAssets.ps1 -Mode Restore -AssetVault 'D:\Cloud\digimon-game-assets'
+```
+
 ## 0.3.4 전투 그래픽·통계·에셋 분리 업데이트
 
 - 역할별 색상 띠, 스킬 발동 펄스, 피해·회복 플래시를 추가했습니다.

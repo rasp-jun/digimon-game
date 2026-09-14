@@ -142,7 +142,12 @@ public sealed class NativeGame : MonoBehaviour
         if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
     }
 
-    private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawShop();if(showCarousel)DrawCarousel();}
+    private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawShop();if(showCarousel)DrawCarousel();if(hp<=0&&!battling)DrawGameOver();}
+    private void DrawGameOver()
+    {
+        DrawRect(new Rect(0,0,1920,1080),new Color(.01f,.025f,.04f,.88f));GUI.Box(new Rect(540,235,840,600),GUIContent.none,card);GUI.Label(new Rect(650,285,620,60),"리그 도전 종료",title);GUI.Label(new Rect(650,365,620,42),$"최종 기록 · {RoundLabel()} 라운드",header);GUI.Label(new Rect(650,420,620,72),"전장을 정비하고 새 리그에 다시 도전할 수 있습니다.\n캐릭터 버전과 난이도 선택은 그대로 유지됩니다.",center);GUI.Label(new Rect(650,520,620,36),lastCombatSummary,center);
+        if(Btn(new Rect(650,625,290,70),"같은 설정으로 재도전")){ResetGame();lobby=false;}if(Btn(new Rect(980,625,290,70),"솔로 로비로")){lobby=true;}if(Btn(new Rect(650,720,620,55),"멀티 모드 선택으로")){FindAnyObjectByType<MultiLauncher>().ReturnToMulti();}
+    }
     private void DrawTop()
     {
         DrawRect(new Rect(0,0,1920,88),new Color(.045f,.09f,.11f)); GUI.Label(new Rect(35,18,370,45),"DIGITAL AUTO ARENA",header);
