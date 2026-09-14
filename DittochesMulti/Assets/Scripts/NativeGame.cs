@@ -26,6 +26,7 @@ public sealed class NativeGame : MonoBehaviour
     private sealed class Unit { public UnitDef def; public int star=1; public readonly List<int> items=new List<int>(); public Unit(UnitDef def) { this.def=def; } }
     private sealed class UnitRef { public bool boardArea; public int index; public Unit unit; }
     private sealed class UnitMeta { public string attr,family;public float hp,atk,speed;public int range;public UnitMeta(string a,string f,float h,float at,float s,int r){attr=a;family=f;hp=h;atk=at;speed=s;range=r;} }
+    private sealed class SkillMeta { public float startMana,maxMana,power;public SkillMeta(float start,float max,float ratio){startMana=start;maxMana=max;power=ratio;} }
     private sealed class Fighter
     {
         public Unit unit; public bool enemy, dead; public Vector2 pos; public float hp, maxHp, mana, maxMana=100, cooldown, hitFlash, attackFlash, attackScale=1f;
@@ -109,6 +110,12 @@ public sealed class NativeGame : MonoBehaviour
         case "togemon":return new UnitMeta("데이터","식물형",900,46,.7f,1);case "garurumon":return new UnitMeta("데이터","야수형",760,59,.85f,1);case "greymon":return new UnitMeta("백신","용형",1080,60,.7f,1);case "kabuterimon":return new UnitMeta("바이러스","곤충형",690,52,.8f,3);case "angemon":return new UnitMeta("백신","천사형",890,70,.9f,1);case "birdramon":return new UnitMeta("데이터","조류형",670,68,.9f,4);
         case "metalgreymon":return new UnitMeta("바이러스","용형",966,105,.85f,4);case "weregarurumon":return new UnitMeta("데이터","야수형",1323,106,1,1);case "lilimon":return new UnitMeta("데이터","식물형",920,62,.8f,3);case "holyangemon":return new UnitMeta("백신","천사형",989,79,.8f,3);case "atlur":return new UnitMeta("바이러스","곤충형",1370,78,.8f,1);case "garudamon":return new UnitMeta("백신","조류형",1030,97,.95f,4);
         case "herakle":return new UnitMeta("바이러스","곤충형",1782,100,.8f,1);case "hououmon":return new UnitMeta("백신","조류형",1185,107,.9f,4);case "wargreymon":return new UnitMeta("백신","용형",1550,128,1,1);case "metalgarurumon":return new UnitMeta("데이터","야수형",1240,120,1.05f,4);case "rosemon":return new UnitMeta("데이터","식물형",1250,89,.9f,3);case "seraphimon":return new UnitMeta("백신","천사형",1300,118,.9f,3);default:return new UnitMeta("바이러스","악당",700,55,.75f,1);}}
+    private SkillMeta Skill(string id){switch(id){
+        case "koromon":return new SkillMeta(10,70,.85f);case "tsunomon":return new SkillMeta(15,85,.92f);case "mochimon":return new SkillMeta(20,105,.82f);case "tanemon":return new SkillMeta(30,90,.88f);case "pyocomon":return new SkillMeta(25,75,1.02f);case "tokomon":return new SkillMeta(35,100,.90f);
+        case "agumon":return new SkillMeta(15,80,1.00f);case "gabumon":return new SkillMeta(20,95,1.06f);case "tentomon":return new SkillMeta(25,110,.94f);case "palmon":return new SkillMeta(40,105,1.00f);case "piyomon":return new SkillMeta(30,85,1.16f);case "patamon":return new SkillMeta(45,115,1.04f);
+        case "togemon":return new SkillMeta(30,120,1.05f);case "garurumon":return new SkillMeta(20,75,1.18f);case "greymon":return new SkillMeta(35,125,1.12f);case "kabuterimon":return new SkillMeta(25,90,1.28f);case "angemon":return new SkillMeta(40,100,1.22f);case "birdramon":return new SkillMeta(30,70,1.24f);
+        case "metalgreymon":return new SkillMeta(35,95,1.38f);case "weregarurumon":return new SkillMeta(25,65,1.34f);case "lilimon":return new SkillMeta(50,110,1.30f);case "holyangemon":return new SkillMeta(45,80,1.46f);case "atlur":return new SkillMeta(40,130,1.18f);case "garudamon":return new SkillMeta(35,75,1.42f);
+        case "herakle":return new SkillMeta(50,140,1.42f);case "hououmon":return new SkillMeta(60,90,1.62f);case "wargreymon":return new SkillMeta(40,70,1.58f);case "metalgarurumon":return new SkillMeta(45,80,1.55f);case "rosemon":return new SkillMeta(65,120,1.48f);case "seraphimon":return new SkillMeta(55,100,1.70f);default:return new SkillMeta(0,100,1f);}}
     private void OnGUI()
     {
         Styles(); float scale=Mathf.Min(Screen.width/1920f,Screen.height/1080f); Matrix4x4 old=GUI.matrix;
@@ -201,7 +208,7 @@ public sealed class NativeGame : MonoBehaviour
     }
     private void DrawUnitDetail()
     {
-        Unit u=inspectedUnit;UnitMeta m=Meta(u.def.id);if(Btn(new Rect(1825,120,55,38),"×")){inspectedUnit=null;return;}Portrait(new Rect(1390,145,150,145),UnitSprite(u.def));GUI.Label(new Rect(1560,150,250,34),UnitName(u.def),header);GUI.Label(new Rect(1560,190,280,26),new string('★',u.star)+$"  ·  {u.def.cost}코스트",label);GUI.Label(new Rect(1560,225,280,25),$"{m.attr} · {m.family} · {u.def.role}",label);
+        Unit u=inspectedUnit;UnitMeta m=Meta(u.def.id);SkillMeta skill=Skill(u.def.id);if(Btn(new Rect(1825,120,55,38),"×")){inspectedUnit=null;return;}Portrait(new Rect(1390,145,150,145),UnitSprite(u.def));GUI.Label(new Rect(1560,150,250,34),UnitName(u.def),header);GUI.Label(new Rect(1560,190,280,26),new string('★',u.star)+$"  ·  {u.def.cost}코스트",label);GUI.Label(new Rect(1560,225,280,25),$"{m.attr} · {m.family} · {u.def.role}",label);GUI.Label(new Rect(1560,255,300,25),$"마나 {skill.startMana:0}/{skill.maxMana:0} · 스킬 계수 {skill.power:0.00}",small);
         float mult=Mathf.Pow(1.8f,u.star-1);GUI.Label(new Rect(1390,305,470,28),"유닛 능력치",header);DetailStat(1390,342,"체력",Mathf.RoundToInt(m.hp*mult).ToString());DetailStat(1510,342,"공격력",Mathf.RoundToInt(m.atk*Mathf.Pow(1.5f,u.star-1)).ToString());DetailStat(1630,342,"공속",m.speed.ToString("0.00"));DetailStat(1750,342,"사거리",m.range.ToString());
         GUI.Label(new Rect(1390,405,470,28),"기여 시너지",header);int attrCount=SynergyCount(m.attr),familyCount=SynergyCount(m.family),roleCount=board.Count(x=>x!=null&&x.def.role==u.def.role);SynergyLine(1390,442,m.attr,attrCount,2,"같은 속성 2명부터 속성 효과 활성화");SynergyLine(1390,493,m.family,familyCount,2,"같은 계열 2/4명에서 전투 보너스 강화");SynergyLine(1390,544,u.def.role,roleCount,2,RoleDescription(u.def.role));
         GUI.Label(new Rect(1390,595,120,24),"역할 스킬",small);GUI.Label(new Rect(1510,588,350,38),SkillDescription(u.def.role),label);GUI.Label(new Rect(1390,640,120,24),"장착 장비",small);for(int i=0;i<u.items.Count;i++){int item=u.items[i];GUI.Button(new Rect(1510+i*165,633,155,38),new GUIContent(ItemIcons[item]+" "+ItemNames[item],ItemNames[item]+"\n"+ItemDescriptions[item]),button);}
@@ -267,22 +274,22 @@ public sealed class NativeGame : MonoBehaviour
     private Fighter CreateFighter(Unit unit,bool enemy,Vector2 pos)
     {
         float scale=1f;if(enemy){int stage=round<=3?1:2+(round-4)/7,step=round<=3?round:1+(round-4)%7;scale=RoundType()=="크립"?(stage==1?.38f+.12f*step:1f+.18f*(stage-2)):DifficultyScale[difficulty]*(1+round*.035f);}UnitMeta meta=Meta(unit.def.id);float itemHp=unit.items.Sum(ItemHealth);float roleHp=!enemy&&RoleActive("탱커")&&unit.def.role=="탱커"?1.25f:!enemy&&RoleActive("지원")?1.10f:1f;float health=(meta.hp+itemHp)*Mathf.Pow(1.8f,unit.star-1)*scale*roleHp;
-        return new Fighter{unit=unit,enemy=enemy,pos=pos,hp=health,maxHp=health,attackScale=scale,cooldown=UnityEngine.Random.Range(.1f,.55f)};
+        SkillMeta skill=Skill(unit.def.id);return new Fighter{unit=unit,enemy=enemy,pos=pos,hp=health,maxHp=health,mana=skill.startMana,maxMana=skill.maxMana,attackScale=scale,cooldown=UnityEngine.Random.Range(.1f,.55f)};
     }
     private bool RoleActive(string role){return board.Where(u=>u!=null&&u.def.role==role).Select(u=>u.def.id).Distinct().Count()>=2;}
     private void UpdateCombat(float dt)
     {
-        foreach(Fighter f in fighters){f.hitFlash=Mathf.Max(0,f.hitFlash-dt);f.attackFlash=Mathf.Max(0,f.attackFlash-dt);if(f.dead)continue;f.cooldown-=dt;Fighter target=fighters.Where(x=>!x.dead&&x.enemy!=f.enemy).OrderBy(x=>Vector2.Distance(f.pos,x.pos)).FirstOrDefault();if(target==null)continue;
+        foreach(Fighter f in fighters){f.hitFlash=Mathf.Max(0,f.hitFlash-dt);f.attackFlash=Mathf.Max(0,f.attackFlash-dt);if(f.dead)continue;if(f.unit.def.role=="마법사")f.mana=Mathf.Min(f.maxMana,f.mana+2f*dt);else if(f.unit.def.role=="지원")f.mana=Mathf.Min(f.maxMana,f.mana+1.5f*dt);f.cooldown-=dt;Fighter target=fighters.Where(x=>!x.dead&&x.enemy!=f.enemy).OrderBy(x=>Vector2.Distance(f.pos,x.pos)).FirstOrDefault();if(target==null)continue;
             UnitMeta meta=Meta(f.unit.def.id);float distance=Vector2.Distance(f.pos,target.pos),range=Mathf.Lerp(1.05f,2.9f,(meta.range-1)/3f);
             if(distance>range){float moveSpeed=(meta.range>1?.70f:1.0f)*dt;f.pos=Vector2.MoveTowards(f.pos,target.pos,moveSpeed);continue;}
-            if(f.cooldown>0)continue;if(f.mana>=f.maxMana){CastSkill(f,target);continue;}float damage=AttackDamage(f);DealDamage(target,damage);f.mana=Mathf.Min(f.maxMana,f.mana+14);f.attackFlash=.16f;float speedBonus=1+f.unit.items.Sum(ItemSpeed);if(!f.enemy&&RoleActive("사수")&&f.unit.def.role=="사수")speedBonus*=1.22f;f.cooldown=1f/(meta.speed*speedBonus);if(!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사")f.hp=Mathf.Min(f.maxHp,f.hp+damage*.12f);
+            if(f.cooldown>0)continue;if(f.mana>=f.maxMana){CastSkill(f,target);continue;}float damage=AttackDamage(f);DealDamage(target,damage);float manaPerAttack=f.unit.def.role=="탱커"?5:f.unit.def.role=="마법사"?7:f.unit.def.role=="지원"?8:10;f.mana=Mathf.Min(f.maxMana,f.mana+manaPerAttack);f.attackFlash=.16f;float speedBonus=1+f.unit.items.Sum(ItemSpeed);if(!f.enemy&&RoleActive("사수")&&f.unit.def.role=="사수")speedBonus*=1.22f;f.cooldown=1f/(meta.speed*speedBonus);if(!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사")f.hp=Mathf.Min(f.maxHp,f.hp+damage*.12f);
         }
     }
     private float AttackDamage(Fighter f){UnitMeta meta=Meta(f.unit.def.id);float roleAtk=!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사"?1.18f:!f.enemy&&RoleActive("마법사")&&f.unit.def.role=="마법사"?1.20f:1f;return meta.atk*Mathf.Pow(1.5f,f.unit.star-1)*(1+f.unit.items.Sum(ItemAttack))*roleAtk*(f.enemy?f.attackScale:1f);}
-    private void DealDamage(Fighter target,float damage){target.hp-=damage;target.mana=Mathf.Min(target.maxMana,target.mana+7);target.hitFlash=.18f;if(target.hp<=0){target.hp=0;target.dead=true;}}
+    private void DealDamage(Fighter target,float damage){target.hp-=damage;if(target.unit.def.role=="탱커")target.mana=Mathf.Min(target.maxMana,target.mana+Mathf.Clamp(damage/target.maxHp*60f,2f,12f));target.hitFlash=.18f;if(target.hp<=0){target.hp=0;target.dead=true;}}
     private void CastSkill(Fighter caster,Fighter target)
     {
-        caster.mana=0;caster.attackFlash=.35f;caster.cooldown=.55f;float power=AttackDamage(caster);string role=caster.unit.def.role;
+        caster.mana=0;caster.attackFlash=.35f;caster.cooldown=.55f;float power=AttackDamage(caster)*Skill(caster.unit.def.id).power;string role=caster.unit.def.role;
         if(role=="탱커"){caster.hp=Mathf.Min(caster.maxHp,caster.hp+caster.maxHp*.18f);return;}
         if(role=="전사"){DealDamage(target,power*1.65f);return;}
         if(role=="사수"){DealDamage(target,power);Fighter second=fighters.Where(x=>!x.dead&&x.enemy!=caster.enemy&&x!=target).OrderBy(x=>Vector2.Distance(target.pos,x.pos)).FirstOrDefault();if(second!=null)DealDamage(second,power*.65f);return;}
