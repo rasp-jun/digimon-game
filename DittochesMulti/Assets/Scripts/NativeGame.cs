@@ -85,6 +85,8 @@ public sealed class NativeGame : MonoBehaviour
     private bool shopLocked, showCarousel, showRecipeGuide;
     private int recipeFocus=-1;
     private float recipeGuideUntil;
+    private bool observedLobby=true;
+    private float screenTransitionUntil;
     private readonly float[] shopHover=new float[5], benchHover=new float[9];
     private int dragSource=-1;
     private bool dragFromBoard, draggingUnit;
@@ -108,7 +110,10 @@ public sealed class NativeGame : MonoBehaviour
         lobbyBackground=Resources.Load<Texture2D>("UI/file-island-lobby-v2");
         difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0); artPack=PlayerPrefs.GetInt("multiSoloArtPack",0);
         if(!Load())ResetGame();
+        observedLobby=lobby;
     }
+
+    private void Update(){if(observedLobby!=lobby){observedLobby=lobby;screenTransitionUntil=Time.unscaledTime+.34f;}}
 
     private void InitPool() { int[] sizes={0,39,26,21,13,10}; pool.Clear(); foreach(UnitDef d in Roster) pool[d.id]=sizes[d.cost]; pool["koromon"]--; }
     private Texture2D MakeTexture(Color color) { Texture2D t=new Texture2D(1,1); t.SetPixel(0,0,color); t.Apply(); return t; }
@@ -146,7 +151,7 @@ public sealed class NativeGame : MonoBehaviour
     {
         Styles(); float scale=Mathf.Min(Screen.width/1920f,Screen.height/1080f); Matrix4x4 old=GUI.matrix;
         GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(scale,scale,1)); DrawRect(new Rect(0,0,1920,1080),bg);
-        if(lobby) DrawLobby(); else DrawGame();if(!string.IsNullOrEmpty(GUI.tooltip)){Vector2 p=Event.current.mousePosition;GUI.Box(new Rect(Mathf.Min(p.x+18,1510),Mathf.Min(p.y+18,980),370,68),GUI.tooltip,card);}GUI.matrix=old;
+        if(lobby) DrawLobby(); else DrawGame();if(!string.IsNullOrEmpty(GUI.tooltip)){Vector2 p=Event.current.mousePosition;GUI.Box(new Rect(Mathf.Min(p.x+18,1510),Mathf.Min(p.y+18,980),370,68),GUI.tooltip,card);}if(Time.unscaledTime<screenTransitionUntil){float fade=Mathf.Clamp01((screenTransitionUntil-Time.unscaledTime)/.34f);DrawRect(new Rect(0,0,1920,1080),new Color(.005f,.012f,.025f,fade));}GUI.matrix=old;
     }
     private void DrawRect(Rect r,Color c){Color old=GUI.color;GUI.color=c;GUI.DrawTexture(r,Texture2D.whiteTexture);GUI.color=old;}
     private bool Btn(Rect r,string text,bool enabled=true){GUI.enabled=enabled;bool hit=GUI.Button(r,text,button);GUI.enabled=true;return hit;}
