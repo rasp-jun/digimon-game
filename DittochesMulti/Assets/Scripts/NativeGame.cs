@@ -271,7 +271,7 @@ public sealed class NativeGame : MonoBehaviour
         if(selectedItem>=0&&board[idx]!=null){Equip(board[idx]);return;}
         if(selectedBench>=0){Unit temp=board[idx];if(temp==null&&board.Count(u=>u!=null)>=level)return;board[idx]=bench[selectedBench];bench[selectedBench]=temp;selectedBench=-1;selectedBoard=-1;Save();return;}
         if(selectedBoard>=0){if(selectedBoard==idx){selectedBoard=-1;return;}Unit temp=board[idx];board[idx]=board[selectedBoard];board[selectedBoard]=temp;selectedBoard=-1;Save();return;}
-        if(board[idx]!=null){selectedBoard=idx;inspectedUnit=board[idx];}
+        Rect cell=BoardCellRect(idx/7+4,idx%7);legendTarget=new Vector2(Mathf.Clamp(cell.center.x,345,1290),Mathf.Clamp(cell.center.y,175,665));if(board[idx]!=null){selectedBoard=idx;inspectedUnit=board[idx];}
     }
     private void UpdateLegendInput()
     {
@@ -281,7 +281,7 @@ public sealed class NativeGame : MonoBehaviour
     private bool TryMoveLegend(Vector2 point)
     {
         if(battling||lobby||selectedBoard>=0||selectedBench>=0||selectedItem>=0||draggingUnit||point.x<292||point.x>1340||point.y<120||point.y>712)return false;
-        for(int i=0;i<board.Length;i++)if(board[i]!=null&&BoardCellRect(i/7+4,i%7).Contains(point))return false;legendTarget=new Vector2(Mathf.Clamp(point.x,345,1290),Mathf.Clamp(point.y,175,665));return true;
+        legendTarget=new Vector2(Mathf.Clamp(point.x,345,1290),Mathf.Clamp(point.y,175,665));return true;
     }
     private void DrawFighter(Fighter f)
     {
