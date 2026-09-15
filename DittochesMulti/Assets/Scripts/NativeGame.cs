@@ -33,6 +33,7 @@ public sealed class NativeGame : MonoBehaviour
         public Unit unit; public bool enemy, dead; public Vector2 pos, renderPos, renderVelocity; public float hp, maxHp, shield, mana, maxMana=100, cooldown, stun, hitFlash, healFlash, shieldFlash, attackFlash, skillFlash, attackScale=1f, damageDone, healingDone, shieldingDone; public int casts;
     }
     private sealed class LootOrb { public Vector2 pos; public int rarity, rewardType, amount; }
+    private sealed class CombatPopup { public Vector2 pos; public string text; public Color color; public float life; }
 
     private static readonly UnitDef[] Roster = {
         new UnitDef("koromon","코로몬",1,"Koromon","전사"),new UnitDef("tsunomon","뿔몬",1,"Tunomon","사수"),new UnitDef("mochimon","모티몬",1,"Mochimon","탱커"),new UnitDef("tanemon","시드몬",1,"Tanemon","지원"),new UnitDef("pyocomon","어니몬",1,"Pyocomon","마법사"),new UnitDef("tokomon","토코몬",1,"Tokomon","지원"),
@@ -75,11 +76,13 @@ public sealed class NativeGame : MonoBehaviour
     private bool lobby=true, battling, win;
     private int difficulty=1, legend, artPack, gold, hp=100, level=1, xp, round=1, selectedBench=-1, selectedBoard=-1, selectedItem=-1;
     private float battleProgress;
+    private float battleStartedAt, battleTimeRemaining;
     private float resultNoticeUntil;
     private string battleText="전투 준비", lastReward="", lastCombatSummary="";
     private string currentOpponent="";
     private readonly List<Fighter> fighters=new List<Fighter>();
     private readonly List<LootOrb> lootOrbs=new List<LootOrb>();
+    private readonly List<CombatPopup> combatPopups=new List<CombatPopup>();
     private readonly List<int> inventory=new List<int>();
     private Unit inspectedUnit;
     private Vector2 legendPos=new Vector2(785,690), legendTarget=new Vector2(785,690), legendVelocity;
@@ -255,7 +258,7 @@ public sealed class NativeGame : MonoBehaviour
             Rect r=BoardCellRect(row,col);Color zone=row<4?new Color(.42f,.10f,.13f,.32f):new Color(.04f,.45f,.40f,.30f);DrawHex(r,new Color(zone.r,zone.g,zone.b,.62f));DrawHex(new Rect(r.x+3,r.y+3,r.width-6,r.height-6),new Color(.025f,.065f,.085f,.70f));
             if(!battling&&row>=4){int idx=(row-4)*7+col;Unit u=scouting?scoutBoard[idx]:board[idx];if(!scouting&&idx==selectedBoard){float pulse=.58f+Mathf.Sin(Time.unscaledTime*5f)*.18f;DrawHex(new Rect(r.x-3,r.y-3,r.width+6,r.height+6),new Color(accent.r,accent.g,accent.b,pulse));}if(!scouting&&draggingUnit&&r.Contains(Event.current.mousePosition))DrawHex(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),new Color(.25f,1f,.62f,.72f));if(GUI.Button(r,GUIContent.none,GUIStyle.none)){if(scouting&&u!=null)inspectedUnit=u;else if(!scouting)ClickBoard(idx);}if(u!=null)DrawUnit(r,u,scouting);}
         }
-        if(battling)foreach(Fighter f in fighters.Where(x=>!x.dead))DrawFighter(f);
+        if(battling){foreach(Fighter f in fighters.Where(x=>!x.dead))DrawFighter(f);DrawCombatPopups();GUI.Box(new Rect(1190,128,130,34),GUIContent.none,card);GUI.Label(new Rect(1195,131,120,27),Mathf.CeilToInt(battleTimeRemaining)+"초",center);float intro=Time.unscaledTime-battleStartedAt;if(intro<1.15f){float alpha=Mathf.Clamp01(Mathf.Min(intro*5f,(1.15f-intro)*4f));DrawRect(new Rect(555,315,520,86),new Color(.008f,.025f,.045f,.82f*alpha));Color old=GUI.color;GUI.color=new Color(1,1,1,alpha);GUI.Label(new Rect(580,325,470,54),"전투 시작",title);GUI.color=old;}}
         for(int oi=lootOrbs.Count-1;oi>=0;oi--){LootOrb orb=lootOrbs[oi];Rect or=new Rect(orb.pos.x-24,orb.pos.y-24,48,48);DrawRect(or,orb.rarity==2?new Color(1,.75f,.15f):orb.rarity==1?new Color(.25f,.65f,1):new Color(.65f,1,.65f));GUI.Label(or,"◆",center);if(!battling&&GUI.Button(or,GUIContent.none,GUIStyle.none))CollectOrb(orb);}
         UpdateLegendInput();
         if(Event.current.type==EventType.Repaint)legendPos=Vector2.SmoothDamp(legendPos,legendTarget,ref legendVelocity,battling?.30f:.18f,battling?430f:720f,Time.deltaTime);
@@ -302,6 +305,11 @@ public sealed class NativeGame : MonoBehaviour
         Texture2D sprite=Tex(combatSprite);float bossScale=f.unit.def.id=="apocalymon"&&(f.attackFlash>0||f.skillFlash>0)?1.55f:1f;Rect spriteRect=new Rect(x+3-(skillPulse*bossScale-1)*38,y-12-(skillPulse*bossScale-1)*38,78*skillPulse*bossScale,78*skillPulse*bossScale);if(sprite!=null)GUI.DrawTexture(spriteRect,sprite,ScaleMode.ScaleToFit,true);GUI.Label(new Rect(x+76,y+4,70,20),UnitName(f.unit.def),small);
         DrawRect(new Rect(x+8,y+55,100,7),new Color(.12f,.08f,.08f));DrawRect(new Rect(x+8,y+55,100*Mathf.Clamp01(f.hp/f.maxHp),7),f.enemy?new Color(.9f,.22f,.18f):new Color(.35f,.9f,.42f));if(f.shield>0)DrawRect(new Rect(x+8,y+53,100*Mathf.Clamp01(f.shield/(f.maxHp*.5f)),2),new Color(.25f,.72f,1f));DrawRect(new Rect(x+8,y+64,100,5),new Color(.04f,.07f,.13f));DrawRect(new Rect(x+8,y+64,100*Mathf.Clamp01(f.mana/f.maxMana),5),new Color(.25f,.65f,1f));if(f.skillFlash>0)GUI.Label(new Rect(x-20,y-25,155,22),SkillName(f.unit.def),small);if(!f.enemy&&GUI.Button(r,GUIContent.none,GUIStyle.none)){if(selectedItem>=0)Equip(f.unit);else inspectedUnit=f.unit;}
     }
+    private void DrawCombatPopups()
+    {
+        foreach(CombatPopup popup in combatPopups){float progress=1-Mathf.Clamp01(popup.life/.72f),alpha=Mathf.Clamp01(popup.life*3f);Color old=GUI.color;GUI.color=new Color(popup.color.r,popup.color.g,popup.color.b,alpha);GUI.Label(new Rect(popup.pos.x-35,popup.pos.y-25-progress*34,90,26),popup.text,center);GUI.color=old;}
+    }
+    private void AddCombatPopup(Fighter target,string value,Color color){combatPopups.Add(new CombatPopup{pos=BoardPoint(target.renderPos)+new Vector2(52,5),text=value,color=color,life=.72f});}
     private Color RoleColor(string role){if(role=="탱커")return new Color(.25f,.65f,1f);if(role=="전사")return new Color(1f,.42f,.2f);if(role=="사수")return new Color(1f,.8f,.2f);if(role=="마법사")return new Color(.72f,.35f,1f);return new Color(.25f,1f,.55f);}
     private void DrawUnit(Rect r,Unit u,bool enemy){Color role=RoleColor(u.def.role);DrawRect(new Rect(r.x+22,r.y+57,72,3),new Color(role.r,role.g,role.b,.85f));Texture2D t=Tex(UnitSprite(u.def));if(t)GUI.DrawTexture(new Rect(r.x+22,r.y-16,72,72),t,ScaleMode.ScaleToFit,true);GUI.Label(new Rect(r.x+4,r.y+43,r.width-8,18),new string('★',u.star)+"  "+UnitName(u.def),center);if(u.items.Count>0)GUI.Label(new Rect(r.x+72,r.y+3,40,38),string.Concat(u.items.Select(i=>ItemIcons[i])),small);}
     private void DrawRight()
@@ -405,10 +413,10 @@ public sealed class NativeGame : MonoBehaviour
 
     private IEnumerator Battle()
     {
-        battling=true;battleProgress=0;selectedBoard=-1;scoutedRival=-1;SetupBattle();battleText=RoundType()=="크립"?"악당 디지몬 토벌 중":currentOpponent+" 테이머와 전투 중";
+        battling=true;battleProgress=0;battleStartedAt=Time.unscaledTime;battleTimeRemaining=28f;combatPopups.Clear();selectedBoard=-1;scoutedRival=-1;SetupBattle();battleText=RoundType()=="크립"?"악당 디지몬 토벌 중":currentOpponent+" 테이머와 전투 중";
         float elapsed=0,maxTime=28f;
         while(elapsed<maxTime&&fighters.Any(f=>!f.dead&&!f.enemy)&&fighters.Any(f=>!f.dead&&f.enemy)){
-            float dt=Time.deltaTime;elapsed+=dt;battleProgress=Mathf.Clamp01(elapsed/maxTime);UpdateCombat(dt);yield return null;
+            float dt=Time.deltaTime;elapsed+=dt;battleTimeRemaining=Mathf.Max(0,maxTime-elapsed);battleProgress=Mathf.Clamp01(elapsed/maxTime);UpdateCombat(dt);yield return null;
         }
         win=fighters.Any(f=>!f.dead&&!f.enemy)&&!fighters.Any(f=>!f.dead&&f.enemy);
         if(elapsed>=maxTime)win=fighters.Where(f=>!f.enemy).Sum(f=>Mathf.Max(0,f.hp))>=fighters.Where(f=>f.enemy).Sum(f=>Mathf.Max(0,f.hp));
@@ -446,16 +454,16 @@ public sealed class NativeGame : MonoBehaviour
     private Fighter SelectTarget(Fighter attacker){IEnumerable<Fighter> enemies=fighters.Where(x=>!x.dead&&x.enemy!=attacker.enemy);if(attacker.unit.def.role=="마법사")return enemies.OrderBy(x=>x.hp/x.maxHp).ThenBy(x=>Vector2.Distance(attacker.pos,x.pos)).FirstOrDefault();if(attacker.unit.def.role=="사수")return enemies.OrderBy(x=>Vector2.Distance(attacker.pos,x.pos)*(x.unit.def.role=="탱커"?.72f:1f)).FirstOrDefault();return enemies.OrderBy(x=>Vector2.Distance(attacker.pos,x.pos)*(x.unit.def.role=="탱커"?.58f:1f)).FirstOrDefault();}
     private void UpdateCombat(float dt)
     {
-        foreach(Fighter f in fighters){f.renderPos=Vector2.SmoothDamp(f.renderPos,f.pos,ref f.renderVelocity,.12f,7f,dt);f.hitFlash=Mathf.Max(0,f.hitFlash-dt);f.healFlash=Mathf.Max(0,f.healFlash-dt);f.shieldFlash=Mathf.Max(0,f.shieldFlash-dt);f.attackFlash=Mathf.Max(0,f.attackFlash-dt);f.skillFlash=Mathf.Max(0,f.skillFlash-dt);if(f.dead)continue;if(f.unit.def.role=="마법사")f.mana=Mathf.Min(f.maxMana,f.mana+2f*dt);else if(f.unit.def.role=="지원")f.mana=Mathf.Min(f.maxMana,f.mana+1.5f*dt);f.cooldown-=dt;f.stun=Mathf.Max(0,f.stun-dt);if(f.stun>0)continue;Fighter target=SelectTarget(f);if(target==null)continue;
+        for(int i=combatPopups.Count-1;i>=0;i--){combatPopups[i].life-=dt;if(combatPopups[i].life<=0)combatPopups.RemoveAt(i);}foreach(Fighter f in fighters){f.renderPos=Vector2.SmoothDamp(f.renderPos,f.pos,ref f.renderVelocity,.12f,7f,dt);f.hitFlash=Mathf.Max(0,f.hitFlash-dt);f.healFlash=Mathf.Max(0,f.healFlash-dt);f.shieldFlash=Mathf.Max(0,f.shieldFlash-dt);f.attackFlash=Mathf.Max(0,f.attackFlash-dt);f.skillFlash=Mathf.Max(0,f.skillFlash-dt);if(f.dead)continue;if(f.unit.def.role=="마법사")f.mana=Mathf.Min(f.maxMana,f.mana+2f*dt);else if(f.unit.def.role=="지원")f.mana=Mathf.Min(f.maxMana,f.mana+1.5f*dt);f.cooldown-=dt;f.stun=Mathf.Max(0,f.stun-dt);if(f.stun>0)continue;Fighter target=SelectTarget(f);if(target==null)continue;
             UnitMeta meta=Meta(f.unit.def.id);float distance=Vector2.Distance(f.pos,target.pos),range=Mathf.Lerp(1.05f,2.9f,(meta.range-1)/3f);
             if(distance>range){float moveSpeed=(meta.range>1?.70f:1.0f)*dt;f.pos=Vector2.MoveTowards(f.pos,target.pos,moveSpeed);continue;}
             if(f.cooldown>0)continue;if(f.mana>=f.maxMana){CastSkill(f,target);continue;}float damage=AttackDamage(f);DealDamage(f,target,damage);float manaPerAttack=f.unit.def.role=="탱커"?5:f.unit.def.role=="마법사"?7:f.unit.def.role=="지원"?8:10;f.mana=Mathf.Min(f.maxMana,f.mana+manaPerAttack);f.attackFlash=.35f;float speedBonus=1+f.unit.items.Sum(ItemSpeed);if(!f.enemy&&RoleActive("사수")&&f.unit.def.role=="사수")speedBonus*=1.22f;f.cooldown=1f/(meta.speed*speedBonus);if(!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사")Heal(f,f,damage*.12f);
         }
     }
     private float AttackDamage(Fighter f){UnitMeta meta=Meta(f.unit.def.id);float roleAtk=!f.enemy&&RoleActive("전사")&&f.unit.def.role=="전사"?1.18f:!f.enemy&&RoleActive("마법사")&&f.unit.def.role=="마법사"?1.20f:1f;return meta.atk*Mathf.Pow(1.5f,f.unit.star-1)*(1+f.unit.items.Sum(ItemAttack))*roleAtk*(f.enemy?f.attackScale:1f);}
-    private void DealDamage(Fighter source,Fighter target,float damage){float absorbed=Mathf.Min(target.shield,damage);target.shield-=absorbed;damage-=absorbed;float actual=Mathf.Min(target.hp,damage);target.hp-=damage;source.damageDone+=Mathf.Max(0,actual);if(target.unit.def.role=="탱커")target.mana=Mathf.Min(target.maxMana,target.mana+Mathf.Clamp((damage+absorbed)/target.maxHp*60f,2f,12f));target.hitFlash=.18f;if(target.hp<=0){target.hp=0;target.dead=true;}}
-    private void Heal(Fighter source,Fighter target,float amount){float actual=Mathf.Min(target.maxHp-target.hp,amount);target.hp+=Mathf.Max(0,actual);target.healFlash=.28f;source.healingDone+=Mathf.Max(0,actual);}
-    private void Shield(Fighter source,Fighter target,float amount){float cap=target.maxHp*.5f,actual=Mathf.Min(cap-target.shield,amount);target.shield+=Mathf.Max(0,actual);target.shieldFlash=.35f;source.shieldingDone+=Mathf.Max(0,actual);}
+    private void DealDamage(Fighter source,Fighter target,float damage){float absorbed=Mathf.Min(target.shield,damage);target.shield-=absorbed;damage-=absorbed;float actual=Mathf.Min(target.hp,damage);target.hp-=damage;source.damageDone+=Mathf.Max(0,actual);if(actual>0)AddCombatPopup(target,"-"+Mathf.RoundToInt(actual),new Color(1f,.48f,.28f));if(target.unit.def.role=="탱커")target.mana=Mathf.Min(target.maxMana,target.mana+Mathf.Clamp((damage+absorbed)/target.maxHp*60f,2f,12f));target.hitFlash=.18f;if(target.hp<=0){target.hp=0;target.dead=true;}}
+    private void Heal(Fighter source,Fighter target,float amount){float actual=Mathf.Min(target.maxHp-target.hp,amount);target.hp+=Mathf.Max(0,actual);target.healFlash=.28f;source.healingDone+=Mathf.Max(0,actual);if(actual>1)AddCombatPopup(target,"+"+Mathf.RoundToInt(actual),new Color(.35f,1f,.55f));}
+    private void Shield(Fighter source,Fighter target,float amount){float cap=target.maxHp*.5f,actual=Mathf.Min(cap-target.shield,amount);target.shield+=Mathf.Max(0,actual);target.shieldFlash=.35f;source.shieldingDone+=Mathf.Max(0,actual);if(actual>1)AddCombatPopup(target,"+"+Mathf.RoundToInt(actual),new Color(.35f,.75f,1f));}
     private void CastSkill(Fighter caster,Fighter target)
     {
         caster.mana=0;caster.casts++;caster.attackFlash=.35f;caster.skillFlash=.8f;caster.cooldown=.55f;SkillMeta skill=Skill(caster.unit.def.id);float power=AttackDamage(caster)*skill.power;string role=caster.unit.def.role;int count=SkillTargets(caster.unit.def.id);
