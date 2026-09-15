@@ -86,6 +86,9 @@ public sealed class NativeGame : MonoBehaviour
     private int recipeFocus=-1;
     private float recipeGuideUntil;
     private readonly float[] shopHover=new float[5], benchHover=new float[9];
+    private int dragSource=-1;
+    private bool dragFromBoard, draggingUnit;
+    private Vector2 dragStart;
     private UnitDef[] carouselUnits=new UnitDef[3]; private int[] carouselItems=new int[3];
     private GUIStyle title, header, label, small, center, button, card, selectedStyle;
     private readonly Color bg=new Color(.012f,.022f,.04f), panel=new Color(.025f,.052f,.082f), accent=new Color(.93f,.72f,.28f);
@@ -164,7 +167,20 @@ public sealed class NativeGame : MonoBehaviour
         if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
     }
 
-    private void DrawGame(){HandleHotkeys();DrawTop();DrawLeft();DrawBoard();DrawRight();DrawBench();DrawShop();DrawSelectionGhost();if(showCarousel)DrawCarousel();if(showRecipeGuide&&Time.unscaledTime<recipeGuideUntil)DrawRecipeGuide();else if(showRecipeGuide)showRecipeGuide=false;if(hp<=0&&!battling)DrawGameOver();}
+    private void DrawGame(){HandleUnitDrag();HandleHotkeys();DrawTop();DrawLeft();DrawBoard();DrawRight();DrawBench();DrawShop();DrawSelectionGhost();if(showCarousel)DrawCarousel();if(showRecipeGuide&&Time.unscaledTime<recipeGuideUntil)DrawRecipeGuide();else if(showRecipeGuide)showRecipeGuide=false;if(hp<=0&&!battling)DrawGameOver();}
+    private Rect BenchRect(int index){return new Rect(376+index*106,750,98,68);}
+    private void HandleUnitDrag()
+    {
+        Event e=Event.current;if(e==null||battling||showCarousel)return;Vector2 p=e.mousePosition;
+        if(e.type==EventType.MouseDown&&e.button==0){dragSource=-1;for(int i=0;i<board.Length;i++){int row=i/7+4,col=i%7;if(board[i]!=null&&BoardCellRect(row,col).Contains(p)){dragSource=i;dragFromBoard=true;break;}}if(dragSource<0)for(int i=0;i<bench.Length;i++)if(bench[i]!=null&&BenchRect(i).Contains(p)){dragSource=i;dragFromBoard=false;break;}dragStart=p;draggingUnit=false;}
+        if(e.type==EventType.MouseDrag&&dragSource>=0&&Vector2.Distance(dragStart,p)>8f){draggingUnit=true;e.Use();}
+        if(e.type==EventType.MouseUp&&e.button==0){if(draggingUnit&&dragSource>=0){DropDraggedUnit(p);e.Use();}dragSource=-1;draggingUnit=false;}
+    }
+    private void DropDraggedUnit(Vector2 p)
+    {
+        for(int i=0;i<board.Length;i++){Rect r=BoardCellRect(i/7+4,i%7);if(!r.Contains(p))continue;if(!dragFromBoard&&board[i]==null&&board.Count(u=>u!=null)>=level)return;Unit moving=dragFromBoard?board[dragSource]:bench[dragSource],other=board[i];board[i]=moving;if(dragFromBoard)board[dragSource]=other;else bench[dragSource]=other;selectedBoard=selectedBench=-1;inspectedUnit=moving;Save();return;}
+        for(int i=0;i<bench.Length;i++){if(!BenchRect(i).Contains(p))continue;Unit moving=dragFromBoard?board[dragSource]:bench[dragSource],other=bench[i];bench[i]=moving;if(dragFromBoard)board[dragSource]=other;else bench[dragSource]=other;selectedBoard=selectedBench=-1;inspectedUnit=moving;Save();return;}
+    }
     private void HandleHotkeys()
     {
         Event e=Event.current;if(e==null||e.type!=EventType.KeyDown||battling||showCarousel||hp<=0)return;
@@ -208,7 +224,7 @@ public sealed class NativeGame : MonoBehaviour
         Rect arenaRect=new Rect(282,118,1068,594);if(arenaBackground!=null){GUI.DrawTexture(arenaRect,arenaBackground,ScaleMode.ScaleAndCrop,true);DrawRect(arenaRect,new Color(.005f,.025f,.045f,.38f));}else DrawRect(arenaRect,new Color(.025f,.095f,.11f));DrawRect(new Rect(282,411,1068,3),new Color(accent.r,accent.g,accent.b,.32f));
         for(int row=0;row<8;row++)for(int col=0;col<7;col++){
             Rect r=BoardCellRect(row,col);Color zone=row<4?new Color(.42f,.10f,.13f,.32f):new Color(.04f,.45f,.40f,.30f);DrawHex(r,new Color(zone.r,zone.g,zone.b,.62f));DrawHex(new Rect(r.x+3,r.y+3,r.width-6,r.height-6),new Color(.025f,.065f,.085f,.70f));
-            if(!battling&&row>=4){int idx=(row-4)*7+col;Unit u=board[idx];if(idx==selectedBoard){float pulse=.58f+Mathf.Sin(Time.unscaledTime*5f)*.18f;DrawHex(new Rect(r.x-3,r.y-3,r.width+6,r.height+6),new Color(accent.r,accent.g,accent.b,pulse));}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBoard(idx);if(u!=null)DrawUnit(r,u,false);}
+            if(!battling&&row>=4){int idx=(row-4)*7+col;Unit u=board[idx];if(idx==selectedBoard){float pulse=.58f+Mathf.Sin(Time.unscaledTime*5f)*.18f;DrawHex(new Rect(r.x-3,r.y-3,r.width+6,r.height+6),new Color(accent.r,accent.g,accent.b,pulse));}if(draggingUnit&&r.Contains(Event.current.mousePosition))DrawHex(new Rect(r.x-4,r.y-4,r.width+8,r.height+8),new Color(.25f,1f,.62f,.72f));if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBoard(idx);if(u!=null)DrawUnit(r,u,false);}
         }
         if(battling)foreach(Fighter f in fighters.Where(x=>!x.dead))DrawFighter(f);
         for(int oi=lootOrbs.Count-1;oi>=0;oi--){LootOrb orb=lootOrbs[oi];Rect or=new Rect(orb.pos.x-24,orb.pos.y-24,48,48);DrawRect(or,orb.rarity==2?new Color(1,.75f,.15f):orb.rarity==1?new Color(.25f,.65f,1):new Color(.65f,1,.65f));GUI.Label(or,"◆",center);if(!battling&&GUI.Button(or,GUIContent.none,GUIStyle.none))CollectOrb(orb);}
@@ -264,11 +280,11 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawBench()
     {
         DrawRect(new Rect(282,738,1068,92),new Color(.018f,.043f,.065f,.96f));GUI.Label(new Rect(294,744,100,22),"BENCH",small);GUI.Label(new Rect(1195,744,140,22),$"{bench.Count(u=>u!=null)} / 9 보관",small);
-        for(int i=0;i<9;i++){Rect r=new Rect(376+i*106,750,98,68);bool hovered=r.Contains(Event.current.mousePosition);benchHover[i]=Mathf.MoveTowards(benchHover[i],hovered?1f:0f,Time.unscaledDeltaTime*8f);float lift=benchHover[i]*4f;GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(benchHover[i]>0)DrawRect(new Rect(r.x,r.y,r.width,3),new Color(accent.r,accent.g,accent.b,benchHover[i]));if(bench[i]!=null){Portrait(new Rect(r.x+4,r.y-2-lift,55+lift,52+lift),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+48,r.y+5,47,23),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+48,r.y+32,47,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
+        for(int i=0;i<9;i++){Rect r=BenchRect(i);bool hovered=r.Contains(Event.current.mousePosition);benchHover[i]=Mathf.MoveTowards(benchHover[i],hovered?1f:0f,Time.unscaledDeltaTime*8f);float lift=benchHover[i]*4f;GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(benchHover[i]>0)DrawRect(new Rect(r.x,r.y,r.width,3),new Color(draggingUnit?.25f:accent.r,draggingUnit?1f:accent.g,draggingUnit?.62f:accent.b,benchHover[i]));if(bench[i]!=null){Portrait(new Rect(r.x+4,r.y-2-lift,55+lift,52+lift),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+48,r.y+5,47,23),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+48,r.y+32,47,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
     }
     private void DrawSelectionGhost()
     {
-        Unit held=selectedBench>=0?bench[selectedBench]:selectedBoard>=0?board[selectedBoard]:null;if(held==null&&selectedItem<0)return;Vector2 p=Event.current.mousePosition;Rect hint=new Rect(Mathf.Clamp(p.x+22,290,1260),Mathf.Clamp(p.y-76,115,765),150,68);Color old=GUI.color;GUI.color=new Color(1,1,1,.76f);GUI.Box(hint,GUIContent.none,selectedStyle);
+        Unit held=draggingUnit?(dragFromBoard?board[dragSource]:bench[dragSource]):selectedBench>=0?bench[selectedBench]:selectedBoard>=0?board[selectedBoard]:null;if(held==null&&selectedItem<0)return;Vector2 p=Event.current.mousePosition;Rect hint=new Rect(Mathf.Clamp(p.x+22,290,1260),Mathf.Clamp(p.y-76,115,765),150,68);Color old=GUI.color;GUI.color=new Color(1,1,1,draggingUnit?.88f:.76f);GUI.Box(hint,GUIContent.none,selectedStyle);
         if(held!=null){Portrait(new Rect(hint.x+5,hint.y-3,65,62),UnitSprite(held.def));GUI.Label(new Rect(hint.x+67,hint.y+7,78,22),UnitName(held.def),small);GUI.Label(new Rect(hint.x+67,hint.y+31,78,22),"배치할 칸 선택",small);}else if(selectedItem<inventory.Count){int item=inventory[selectedItem];GUI.Label(new Rect(hint.x+8,hint.y+7,40,40),ItemIcons[item],header);GUI.Label(new Rect(hint.x+45,hint.y+7,100,22),ItemNames[item],small);GUI.Label(new Rect(hint.x+45,hint.y+31,100,22),"유닛에 장착",small);}GUI.color=old;
     }
     private void SelectInventoryItem(int index)
