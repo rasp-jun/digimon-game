@@ -199,17 +199,20 @@ public sealed class NativeGame : MonoBehaviour
         GUI.Label(new Rect(28,12,360,26),"FILE ISLAND",small);GUI.Label(new Rect(28,34,360,42),"DIGITAL AUTO ARENA",header);
         GUI.Box(new Rect(785,8,350,76),GUIContent.none,selectedStyle);GUI.Label(new Rect(815,12,290,24),RoundType().ToUpperInvariant(),center);GUI.Label(new Rect(815,34,290,42),RoundLabel(),title);
         Stat(430,"HP",hp.ToString());Stat(600,"GOLD",gold+" G");Stat(1190,"LEVEL",level==9?"LV.9 MAX":$"LV.{level}");Stat(1360,"XP",level==9?"MAX":$"{xp} / {NeedXp()}");
+        MiniBar(new Rect(430,77,130,4),Mathf.Clamp01(hp/100f),new Color(.32f,.92f,.48f));MiniBar(new Rect(1360,77,150,4),level==9?1f:Mathf.Clamp01((float)xp/NeedXp()),new Color(.30f,.66f,1f));
         if(Btn(new Rect(1640,20,110,48),"로비",!battling))lobby=true;if(Btn(new Rect(1765,20,120,48),"종료"))Application.Quit();
     }
     private void Stat(float x,string key,string value){GUI.Label(new Rect(x,15,180,25),key,small);GUI.Label(new Rect(x,38,180,38),value,header);}
+    private void MiniBar(Rect r,float value,Color color){DrawRect(r,new Color(.08f,.11f,.14f));DrawRect(new Rect(r.x,r.y,r.width*Mathf.Clamp01(value),r.height),color);}
     private void DrawLeft()
     {
         DrawRect(new Rect(16,108,248,620),new Color(panel.r,panel.g,panel.b,.94f));DrawRect(new Rect(16,108,4,620),accent);GUI.Label(new Rect(38,124,205,28),"TEAM TRAITS",header);
-        Trait(166,"전사",board.Count(u=>u!=null&&u.def.role=="전사"));Trait(226,"탱커",board.Count(u=>u!=null&&u.def.role=="탱커"));Trait(286,"사수",board.Count(u=>u!=null&&u.def.role=="사수"));Trait(346,"마법사",board.Count(u=>u!=null&&u.def.role=="마법사"));Trait(406,"지원",board.Count(u=>u!=null&&u.def.role=="지원"));
+        Trait(166,"전사",RoleCount("전사"));Trait(226,"탱커",RoleCount("탱커"));Trait(286,"사수",RoleCount("사수"));Trait(346,"마법사",RoleCount("마법사"));Trait(406,"지원",RoleCount("지원"));
         GUI.Label(new Rect(38,477,205,25),"ITEM BENCH",header);
         for(int i=0;i<inventory.Count&&i<12;i++){Rect ir=new Rect(38+(i%4)*50,512+(i/4)*48,43,41);int item=inventory[i];GUI.Box(ir,GUIContent.none,i==selectedItem?selectedStyle:card);Event e=Event.current;if(e!=null&&e.type==EventType.MouseDown&&e.button==1&&ir.Contains(e.mousePosition)){recipeFocus=item;showRecipeGuide=true;recipeGuideUntil=Time.unscaledTime+2.8f;e.Use();}else if(GUI.Button(ir,new GUIContent(ItemIcons[item],ItemNames[item]+"\n"+ItemDescriptions[item]),button))SelectInventoryItem(i);}
         string itemHelp=selectedItem>=0&&selectedItem<inventory.Count?ItemNames[inventory[selectedItem]]+" 선택됨":"좌클릭 합성/장착 · 우클릭 조합법";GUI.Label(new Rect(35,660,215,42),itemHelp,small);
     }
+    private int RoleCount(string role){return board.Where(u=>u!=null&&u.def.role==role).Select(u=>u.def.id).Distinct().Count();}
     private void Trait(float y,string name,int count){GUI.Box(new Rect(34,y,212,48),GUIContent.none,count>=2?selectedStyle:card);DrawRect(new Rect(34,y,5,48),count>=2?accent:new Color(.18f,.25f,.32f));GUI.Label(new Rect(50,y+6,110,34),name,label);GUI.Label(new Rect(178,y+6,55,34),count+" / 2",label);}
     private Rect BoardCellRect(int row,int col){return new Rect(330+col*132+(row%2)*60,126+row*70,116,66);}
     private Vector2 BoardPoint(Vector2 boardPos)
@@ -273,7 +276,7 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawRight()
     {
         DrawRect(new Rect(1368,108,532,620),new Color(panel.r,panel.g,panel.b,.96f));DrawRect(new Rect(1896,108,4,620),accent);if(inspectedUnit!=null)DrawUnitDetail();else{GUI.Label(new Rect(1390,125,480,30),"PLAYER SCOUT",header);string[] names=(new[]{"나의 테이머"}).Concat(RivalNames).ToArray();
-        for(int i=0;i<8;i++){float y=170+i*55;bool fighting=battling&&i>0&&names[i]==currentOpponent;GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0||fighting?selectedStyle:card);GUI.Label(new Rect(1395,y+8,35,28),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+8,250,28),(fighting?"⚔ ":"")+names[i],label);GUI.Label(new Rect(1735,y+8,125,28),i==0?hp+" HP":Mathf.Max(0,100-round*i)+" HP",small);}
+        for(int i=0;i<8;i++){float y=170+i*55;bool fighting=battling&&i>0&&names[i]==currentOpponent;int playerHp=i==0?hp:Mathf.Max(0,100-round*i);GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0||fighting?selectedStyle:card);if(fighting)DrawRect(new Rect(1380,y,5,46),new Color(1f,.38f,.20f,.75f+Mathf.Sin(Time.unscaledTime*6f)*.2f));GUI.Label(new Rect(1395,y+7,35,25),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+7,250,25),(fighting?"⚔ ":"")+names[i],label);GUI.Label(new Rect(1760,y+7,100,24),playerHp+" HP",small);MiniBar(new Rect(1440,y+35,420,4),playerHp/100f,i==0?new Color(.32f,.92f,.48f):new Color(.90f,.35f,.28f));}
         GUI.Label(new Rect(1390,635,480,48),battling?"상대 전력을 분석 중입니다.":"유닛을 선택하면 상세 정보가 표시됩니다.",small);}
         if(Btn(new Rect(1645,674,225,42),"선택 유닛 판매",!battling&&(selectedBench>=0||selectedBoard>=0)))SellSelectedUnit();
     }
