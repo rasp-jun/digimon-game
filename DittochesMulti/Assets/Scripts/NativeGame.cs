@@ -59,6 +59,7 @@ public sealed class NativeGame : MonoBehaviour
     private static readonly string[] Legends={"비트몬","코로몬","토코몬","어니몬"};
     private static readonly string[] LegendSprites={"","Koromon","Tokomon","Pyocomon"};
     private static readonly string[] Difficulties={"쉬움","보통","어려움"};
+    private static readonly string[] RivalNames={"태일","매튜","소라","미나","리키","한솔","나리"};
     private static readonly float[] DifficultyScale={.88f,1f,1.12f};
     private static readonly int[,] ShopOdds={{100,0,0,0,0},{100,0,0,0,0},{75,25,0,0,0},{55,30,15,0,0},{40,35,23,2,0},{25,40,28,7,0},{18,30,35,16,1},{15,20,32,28,5},{10,15,25,35,15}};
     private static readonly string[] ItemNames={"공격 데이터","크롬디지조이드 조각","순수 에너지","생명 파편","용기의 문장","우정의 문장","사랑의 문장","성실의 문장","지식의 문장","희망의 문장","순수의 문장","빛의 문장","기적의 캡슐","운명의 캡슐","자석 제거기"};
@@ -75,6 +76,7 @@ public sealed class NativeGame : MonoBehaviour
     private float battleProgress;
     private float resultNoticeUntil;
     private string battleText="전투 준비", lastReward="", lastCombatSummary="";
+    private string currentOpponent="";
     private readonly List<Fighter> fighters=new List<Fighter>();
     private readonly List<LootOrb> lootOrbs=new List<LootOrb>();
     private readonly List<int> inventory=new List<int>();
@@ -231,8 +233,8 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawUnit(Rect r,Unit u,bool enemy){Texture2D t=Tex(UnitSprite(u.def));if(t)GUI.DrawTexture(new Rect(r.x+7,r.y+2,62,55),t,ScaleMode.ScaleToFit,true);GUI.Label(new Rect(r.x+67,r.y+7,r.width-70,22),UnitName(u.def),small);GUI.Label(new Rect(r.x+67,r.y+29,r.width-70,18),new string('★',u.star),small);GUI.Label(new Rect(r.x+67,r.y+49,r.width-70,18),(enemy?"적":u.def.role)+string.Concat(u.items.Select(i=>ItemIcons[i])),small);}
     private void DrawRight()
     {
-        DrawRect(new Rect(1360,108,540,710),panel);if(inspectedUnit!=null)DrawUnitDetail();else{GUI.Label(new Rect(1380,125,500,30),"리그 순위",header);string[] names={"나의 테이머","태일","매튜","소라","미나","리키","한솔","나리"};
-        for(int i=0;i<8;i++){float y=170+i*55;GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0?selectedStyle:card);GUI.Label(new Rect(1395,y+8,35,28),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+8,250,28),names[i],label);GUI.Label(new Rect(1735,y+8,125,28),i==0?hp+" HP":Mathf.Max(0,100-round*i)+" HP",small);}}
+        DrawRect(new Rect(1360,108,540,710),panel);if(inspectedUnit!=null)DrawUnitDetail();else{GUI.Label(new Rect(1380,125,500,30),"리그 순위",header);string[] names=(new[]{"나의 테이머"}).Concat(RivalNames).ToArray();
+        for(int i=0;i<8;i++){float y=170+i*55;bool fighting=battling&&i>0&&names[i]==currentOpponent;GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0||fighting?selectedStyle:card);GUI.Label(new Rect(1395,y+8,35,28),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+8,250,28),(fighting?"⚔ ":"")+names[i],label);GUI.Label(new Rect(1735,y+8,125,28),i==0?hp+" HP":Mathf.Max(0,100-round*i)+" HP",small);}}
         GUI.Label(new Rect(1380,635,500,30),"대기석",header);
         for(int i=0;i<9;i++){Rect r=new Rect(1380+(i%5)*98,675+(i/5)*63,88,55);GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(bench[i]!=null){Portrait(new Rect(r.x+2,r.y+1,45,42),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+42,r.y+3,43,27),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+42,r.y+29,43,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
         if(Btn(new Rect(1380,780,235,38),"선택 유닛 판매",selectedBench>=0)){Unit u=bench[selectedBench];gold+=u.def.cost*(int)Mathf.Pow(3,u.star-1);pool[u.def.id]+=(int)Mathf.Pow(3,u.star-1);bench[selectedBench]=null;if(inspectedUnit==u)inspectedUnit=null;selectedBench=-1;Save();}
@@ -285,7 +287,7 @@ public sealed class NativeGame : MonoBehaviour
 
     private IEnumerator Battle()
     {
-        battling=true;battleProgress=0;selectedBoard=-1;SetupBattle();battleText=RoundType()=="크립"?"악당 디지몬 토벌 중 · 유닛들이 실제 전투 중":"상대 테이머와 전투 중 · 유닛들이 실제 전투 중";
+        battling=true;battleProgress=0;selectedBoard=-1;SetupBattle();battleText=RoundType()=="크립"?"악당 디지몬 토벌 중":currentOpponent+" 테이머와 전투 중";
         float elapsed=0,maxTime=28f;
         while(elapsed<maxTime&&fighters.Any(f=>!f.dead&&!f.enemy)&&fighters.Any(f=>!f.dead&&f.enemy)){
             float dt=Time.deltaTime;elapsed+=dt;battleProgress=Mathf.Clamp01(elapsed/maxTime);UpdateCombat(dt);yield return null;
@@ -301,8 +303,21 @@ public sealed class NativeGame : MonoBehaviour
     {
         fighters.Clear();
         for(int i=0;i<board.Length;i++)if(board[i]!=null){int col=i%7,row=i/7+4;fighters.Add(CreateFighter(board[i],false,new Vector2(col,row)));}
-        int stage=round<=3?1:2+(round-4)/7,step=round<=3?round:1+(round-4)%7;int enemyCount=stage==1?step:Mathf.Min(7,stage+1);UnitDef enemy=EnemyForRound();
-        for(int i=0;i<enemyCount;i++){Unit copy=new Unit(enemy);copy.star=Mathf.Clamp(1+round/9,1,3);fighters.Add(CreateFighter(copy,true,new Vector2(i%7,(i/7)+1)));}
+        int stage=round<=3?1:2+(round-4)/7,step=round<=3?round:1+(round-4)%7;
+        if(RoundType()=="크립")
+        {
+            currentOpponent="";int enemyCount=stage==1?step:Mathf.Min(7,stage+1);UnitDef enemy=EnemyForRound();
+            for(int i=0;i<enemyCount;i++){Unit copy=new Unit(enemy);copy.star=Mathf.Clamp(1+round/9,1,3);fighters.Add(CreateFighter(copy,true,new Vector2(i%7,(i/7)+1)));}
+        }
+        else SetupRivalTeam(stage,step);
+    }
+    private void SetupRivalTeam(int stage,int step)
+    {
+        int rivalIndex=Mathf.Abs((round-4)*3+stage)%RivalNames.Length;currentOpponent=RivalNames[rivalIndex];int enemyCount=Mathf.Clamp(stage+1,3,7),maxCost=Mathf.Clamp(stage,1,5);
+        string[] preferredRoles={"전사","사수","마법사","지원","탱커","마법사","전사"};string preferred=preferredRoles[rivalIndex];
+        List<UnitDef> choices=Roster.Where(d=>d.cost<=maxCost).OrderByDescending(d=>d.role==preferred).ThenBy(_=>UnityEngine.Random.value).ToList();
+        int[] columns={3,2,4,1,5,0,6};int[] rows={1,1,1,2,2,2,2};
+        for(int i=0;i<enemyCount;i++){Unit unit=new Unit(choices[i%choices.Count]);unit.star=stage>=5&&i<2?2:stage>=3&&i==0?2:1;if(stage>=4&&i<Mathf.Min(2,stage-3))unit.items.Add(UnityEngine.Random.Range(0,4));fighters.Add(CreateFighter(unit,true,new Vector2(columns[i],rows[i])));}
     }
     private Fighter CreateFighter(Unit unit,bool enemy,Vector2 pos)
     {
