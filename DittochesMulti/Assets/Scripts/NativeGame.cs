@@ -220,7 +220,7 @@ public sealed class NativeGame : MonoBehaviour
     private void UpdateLegendInput()
     {
         if(battling)return;Event e=Event.current;if(e==null||(e.type!=EventType.MouseDown&&e.type!=EventType.MouseDrag))return;
-        Vector2 p=e.mousePosition;if(p.x>=310&&p.x<=1330&&p.y>=155&&p.y<=810){legendTarget=new Vector2(Mathf.Clamp(p.x,365,1275),Mathf.Clamp(p.y,205,745));e.Use();}
+        Vector2 p=e.mousePosition;if(p.x>=292&&p.x<=1340&&p.y>=120&&p.y<=712){legendTarget=new Vector2(Mathf.Clamp(p.x,345,1290),Mathf.Clamp(p.y,175,665));e.Use();}
     }
     private void DrawFighter(Fighter f)
     {
