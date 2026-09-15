@@ -164,7 +164,13 @@ public sealed class NativeGame : MonoBehaviour
         if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
     }
 
-    private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawBench();DrawShop();if(showCarousel)DrawCarousel();if(showRecipeGuide&&Time.unscaledTime<recipeGuideUntil)DrawRecipeGuide();else if(showRecipeGuide)showRecipeGuide=false;if(hp<=0&&!battling)DrawGameOver();}
+    private void DrawGame(){HandleHotkeys();DrawTop();DrawLeft();DrawBoard();DrawRight();DrawBench();DrawShop();DrawSelectionGhost();if(showCarousel)DrawCarousel();if(showRecipeGuide&&Time.unscaledTime<recipeGuideUntil)DrawRecipeGuide();else if(showRecipeGuide)showRecipeGuide=false;if(hp<=0&&!battling)DrawGameOver();}
+    private void HandleHotkeys()
+    {
+        Event e=Event.current;if(e==null||e.type!=EventType.KeyDown||battling||showCarousel||hp<=0)return;
+        if(e.keyCode==KeyCode.D&&gold>=2){gold-=2;RollShop();e.Use();return;}if(e.keyCode==KeyCode.F&&gold>=4&&level<9){gold-=4;AddXp(4);Save();e.Use();return;}if(e.keyCode==KeyCode.Space&&board.Any(u=>u!=null)){StartRoundAction();e.Use();return;}if(e.keyCode==KeyCode.Escape){selectedBench=selectedBoard=selectedItem=-1;inspectedUnit=null;e.Use();}
+    }
+    private void StartRoundAction(){if(battling)return;if(RoundType()=="초밥집")OpenCarousel();else if(board.Any(u=>u!=null))StartCoroutine(Battle());}
     private void DrawGameOver()
     {
         DrawRect(new Rect(0,0,1920,1080),new Color(.01f,.025f,.04f,.88f));GUI.Box(new Rect(540,235,840,600),GUIContent.none,card);GUI.Label(new Rect(650,285,620,60),"리그 도전 종료",title);GUI.Label(new Rect(650,365,620,42),$"최종 기록 · {RoundLabel()} 라운드",header);GUI.Label(new Rect(650,420,620,72),"전장을 정비하고 새 리그에 다시 도전할 수 있습니다.\n캐릭터 버전과 난이도 선택은 그대로 유지됩니다.",center);GUI.Label(new Rect(650,520,620,36),lastCombatSummary,center);
@@ -260,6 +266,11 @@ public sealed class NativeGame : MonoBehaviour
         DrawRect(new Rect(282,738,1068,92),new Color(.018f,.043f,.065f,.96f));GUI.Label(new Rect(294,744,100,22),"BENCH",small);GUI.Label(new Rect(1195,744,140,22),$"{bench.Count(u=>u!=null)} / 9 보관",small);
         for(int i=0;i<9;i++){Rect r=new Rect(376+i*106,750,98,68);bool hovered=r.Contains(Event.current.mousePosition);benchHover[i]=Mathf.MoveTowards(benchHover[i],hovered?1f:0f,Time.unscaledDeltaTime*8f);float lift=benchHover[i]*4f;GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(benchHover[i]>0)DrawRect(new Rect(r.x,r.y,r.width,3),new Color(accent.r,accent.g,accent.b,benchHover[i]));if(bench[i]!=null){Portrait(new Rect(r.x+4,r.y-2-lift,55+lift,52+lift),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+48,r.y+5,47,23),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+48,r.y+32,47,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
     }
+    private void DrawSelectionGhost()
+    {
+        Unit held=selectedBench>=0?bench[selectedBench]:selectedBoard>=0?board[selectedBoard]:null;if(held==null&&selectedItem<0)return;Vector2 p=Event.current.mousePosition;Rect hint=new Rect(Mathf.Clamp(p.x+22,290,1260),Mathf.Clamp(p.y-76,115,765),150,68);Color old=GUI.color;GUI.color=new Color(1,1,1,.76f);GUI.Box(hint,GUIContent.none,selectedStyle);
+        if(held!=null){Portrait(new Rect(hint.x+5,hint.y-3,65,62),UnitSprite(held.def));GUI.Label(new Rect(hint.x+67,hint.y+7,78,22),UnitName(held.def),small);GUI.Label(new Rect(hint.x+67,hint.y+31,78,22),"배치할 칸 선택",small);}else if(selectedItem<inventory.Count){int item=inventory[selectedItem];GUI.Label(new Rect(hint.x+8,hint.y+7,40,40),ItemIcons[item],header);GUI.Label(new Rect(hint.x+45,hint.y+7,100,22),ItemNames[item],small);GUI.Label(new Rect(hint.x+45,hint.y+31,100,22),"유닛에 장착",small);}GUI.color=old;
+    }
     private void SelectInventoryItem(int index)
     {
         if(index<0||index>=inventory.Count)return;if(selectedItem==index){selectedItem=-1;return;}
@@ -323,9 +334,9 @@ public sealed class NativeGame : MonoBehaviour
     {
         DrawRect(new Rect(0,838,1920,242),new Color(.012f,.030f,.052f,.99f));DrawRect(new Rect(0,838,1920,3),accent);GUI.Label(new Rect(40,855,230,30),"SHOP · 디지몬 모집",header);
         int interest=Mathf.Min(5,gold/10);GUI.Label(new Rect(270,842,800,22),ShopOddsText(),small);GUI.Label(new Rect(40,1028,205,24),$"이자 +{interest}G  ·  다음 기본 수입 {5+interest}G",small);
-        if(Btn(new Rect(40,895,145,42),"새로고침 2G",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,34),shopLocked?"◆ 잠금 유지":"◇ 상점 잠금")){shopLocked=!shopLocked;Save();}
+        if(Btn(new Rect(40,895,145,42),"새로고침 2G  [D]",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4  [F]",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,34),shopLocked?"◆ 잠금 유지":"◇ 상점 잠금")){shopLocked=!shopLocked;Save();}
         for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);bool hovered=r.Contains(Event.current.mousePosition);shopHover[i]=Mathf.MoveTowards(shopHover[i],hovered?1f:0f,Time.unscaledDeltaTime*7f);GUI.Box(r,GUIContent.none,shopHover[i]>.03f?selectedStyle:card);UnitDef d=shop[i];if(d!=null){Color rarity=CostColor(d.cost);DrawRect(new Rect(r.x,r.y,r.width,4+shopHover[i]*2),rarity);float lift=shopHover[i]*6f,scale=shopHover[i]*5f;Portrait(new Rect(r.x+8-scale*.5f,r.y+8-lift,105+scale,100+scale),UnitSprite(d));GUI.Label(new Rect(r.x+112,r.y+12,105,28),UnitName(d),label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
-        string action=RoundType()=="초밥집"?RoundLabel()+" 선택창 열기":RoundLabel()+" 전투 시작";if(Btn(new Rect(1530,875,330,135),battling?"전투 진행 중":action,!battling&&(RoundType()=="초밥집"||board.Any(u=>u!=null)))){if(RoundType()=="초밥집")OpenCarousel();else StartCoroutine(Battle());}
+        string action=RoundType()=="초밥집"?RoundLabel()+" 선택창 열기":RoundLabel()+" 전투 시작";if(Btn(new Rect(1530,875,330,135),battling?"전투 진행 중":action+"  [SPACE]",!battling&&(RoundType()=="초밥집"||board.Any(u=>u!=null))))StartRoundAction();
     }
     private string ShopOddsText(){return $"LV.{level} 배치 {board.Count(u=>u!=null)}/{level}  ·  상점 확률  1G {ShopOdds[level-1,0]}%  2G {ShopOdds[level-1,1]}%  3G {ShopOdds[level-1,2]}%  4G {ShopOdds[level-1,3]}%  5G {ShopOdds[level-1,4]}%";}
     private Color CostColor(int cost){if(cost==1)return new Color(.55f,.62f,.68f);if(cost==2)return new Color(.20f,.72f,.42f);if(cost==3)return new Color(.22f,.55f,1f);if(cost==4)return new Color(.72f,.30f,1f);return new Color(1f,.70f,.18f);}
