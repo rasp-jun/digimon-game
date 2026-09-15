@@ -70,7 +70,7 @@ public sealed class NativeGame : MonoBehaviour
     private readonly UnitDef[] shop=new UnitDef[5];
     private readonly Dictionary<string,int> pool=new Dictionary<string,int>();
     private readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
-    private Texture2D arenaBackground, hexTexture;
+    private Texture2D arenaBackground, lobbyBackground, hexTexture;
     private bool lobby=true, battling, win;
     private int difficulty=1, legend, artPack, gold, hp=100, level=1, xp, round=1, selectedBench=-1, selectedBoard=-1, selectedItem=-1;
     private float battleProgress;
@@ -105,6 +105,7 @@ public sealed class NativeGame : MonoBehaviour
     {
         Application.targetFrameRate=60; Screen.sleepTimeout=SleepTimeout.NeverSleep;
         arenaBackground=Resources.Load<Texture2D>("UI/file-island-arena-v1");
+        lobbyBackground=Resources.Load<Texture2D>("UI/file-island-lobby-v2");
         difficulty=PlayerPrefs.GetInt("multiSoloDifficulty",1); legend=PlayerPrefs.GetInt("multiSoloLegend",0); artPack=PlayerPrefs.GetInt("multiSoloArtPack",0);
         if(!Load())ResetGame();
     }
@@ -153,18 +154,16 @@ public sealed class NativeGame : MonoBehaviour
 
     private void DrawLobby()
     {
-        if (Btn(new Rect(20,20,260,60),"멀티 모드 선택으로")) { FindAnyObjectByType<MultiLauncher>().ReturnToMulti(); return; }
-        DrawRect(new Rect(180,105,1560,870),panel); GUI.Label(new Rect(400,145,1120,55),"FILE ISLAND LEAGUE",title); GUI.Label(new Rect(450,205,1020,35),"UNITY 6.6 NATIVE ANDROID PROTOTYPE",center);
-        GUI.Label(new Rect(245,280,390,35),"게임 모드",header); GUI.Box(new Rect(245,325,390,120),GUIContent.none,selectedStyle); GUI.Label(new Rect(275,345,80,80),"1P",title); GUI.Label(new Rect(380,350,220,30),"솔로 플레이",header); GUI.Label(new Rect(380,388,220,25),"플레이어 1명 + AI 7명",small);
-        GUI.Label(new Rect(245,490,390,35),"난이도",header);
-        for(int i=0;i<3;i++){Rect r=new Rect(245+i*135,535,120,80);GUI.Box(r,GUIContent.none,i==difficulty?selectedStyle:card);if(Btn(new Rect(r.x+5,r.y+5,r.width-10,r.height-10),Difficulties[i]))difficulty=i;}
-        GUI.Label(new Rect(245,630,390,50),difficulty==0?"AI 전투력 88% · 처음 플레이 추천":difficulty==1?"표준 전투력 · 기본 난이도":"AI 전투력 112% · 숙련자 추천",small);
-        GUI.Label(new Rect(245,680,390,30),"캐릭터 버전",header);if(Btn(new Rect(245,718,185,48),artPack==0?"✓ 디지몬 팬 버전":"디지몬 팬 버전")){artPack=0;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}if(Btn(new Rect(450,718,185,48),artPack==1?"✓ 오리지널 버전":"오리지널 버전")){artPack=1;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}
-        GUI.Label(new Rect(700,280,970,35),"전설이 선택",header);
-        for(int i=0;i<4;i++){Rect r=new Rect(700+i*235,325,210,300);GUI.Box(r,GUIContent.none,i==legend?selectedStyle:card);Portrait(new Rect(r.x+35,r.y+25,140,150),LegendSprites[i],"⌁");GUI.Label(new Rect(r.x+10,r.y+190,190,35),Legends[i],center);if(Btn(new Rect(r.x+25,r.y+235,160,45),i==legend?"선택됨":"선택"))legend=i;}
-        GUI.Label(new Rect(700,650,970,40),"전설이는 전리품 회수와 승리 연출을 담당하며 능력치에는 영향을 주지 않습니다.",small);
-        if(Btn(new Rect(710,795,500,80),Difficulties[difficulty]+" · "+(artPack==0?"디지몬":"오리지널")+" 리그 입장")){lobby=false;Save();}
-        if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
+        if(lobbyBackground!=null){GUI.DrawTexture(new Rect(0,0,1920,1080),lobbyBackground,ScaleMode.ScaleAndCrop,true);DrawRect(new Rect(0,0,1920,1080),new Color(.005f,.018f,.038f,.62f));}else DrawRect(new Rect(0,0,1920,1080),bg);
+        DrawRect(new Rect(0,0,1920,94),new Color(.01f,.025f,.05f,.96f));DrawRect(new Rect(0,90,1920,4),accent);GUI.Label(new Rect(54,14,560,28),"FILE ISLAND / SOLO LEAGUE",small);GUI.Label(new Rect(54,38,560,42),"디지몬 오토 아레나",header);if(Btn(new Rect(1625,22,245,48),"← 모드 선택으로")){FindAnyObjectByType<MultiLauncher>().ReturnToMulti();return;}
+        DrawRect(new Rect(62,140,470,820),new Color(panel.r,panel.g,panel.b,.96f));DrawRect(new Rect(62,140,5,820),accent);GUI.Label(new Rect(95,174,400,28),"MATCH SETTINGS",header);GUI.Label(new Rect(95,214,400,52),"나만의 속도로 즐기는\n1인 파일 아일랜드 리그",label);
+        GUI.Label(new Rect(95,298,400,28),"난이도",header);for(int i=0;i<3;i++){Rect r=new Rect(95+i*132,338,118,58);GUI.Box(r,GUIContent.none,i==difficulty?selectedStyle:card);if(Btn(new Rect(r.x+4,r.y+4,r.width-8,r.height-8),Difficulties[i]))difficulty=i;}GUI.Label(new Rect(95,410,400,44),difficulty==0?"AI 전투력 88% · 처음 플레이 추천":difficulty==1?"표준 전투력 · 기본 난이도":"AI 전투력 112% · 숙련자 추천",small);
+        GUI.Label(new Rect(95,490,400,28),"캐릭터 버전",header);if(Btn(new Rect(95,530,190,52),artPack==0?"◆ 디지몬 버전":"◇ 디지몬 버전")){artPack=0;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}if(Btn(new Rect(300,530,190,52),artPack==1?"◆ 오리지널":"◇ 오리지널")){artPack=1;PlayerPrefs.SetInt("multiSoloArtPack",artPack);PlayerPrefs.Save();}
+        GUI.Label(new Rect(95,630,400,28),"현재 설정",header);GUI.Box(new Rect(95,670,395,92),GUIContent.none,selectedStyle);GUI.Label(new Rect(115,682,355,30),Difficulties[difficulty]+" · "+(artPack==0?"디지몬":"오리지널"),label);GUI.Label(new Rect(115,717,355,28),"플레이어 1명 + AI 테이머 7명",small);
+        if(Btn(new Rect(95,812,395,74),"솔로 리그 입장")){lobby=false;Save();}if(Btn(new Rect(95,900,395,38),"새 게임으로 초기화")){ResetGame();lobby=false;}
+        GUI.Label(new Rect(585,150,1240,35),"LITTLE LEGEND",header);GUI.Label(new Rect(585,188,1240,32),"전리품을 회수하고 전장을 함께 누빌 파트너를 선택하세요.",small);
+        for(int i=0;i<4;i++){Rect r=new Rect(585+i*310,252,280,488);GUI.Box(r,GUIContent.none,i==legend?selectedStyle:card);DrawRect(new Rect(r.x,r.y,r.width,5),i==legend?accent:new Color(.16f,.30f,.38f));Portrait(new Rect(r.x+34,r.y+36,212,245),LegendSprites[i],"⌁");GUI.Label(new Rect(r.x+15,r.y+300,250,38),Legends[i],header);GUI.Label(new Rect(r.x+20,r.y+350,240,52),i==legend?"선택된 전설이":"전장 파트너",center);if(Btn(new Rect(r.x+35,r.y+418,210,48),i==legend?"✓ 선택됨":"선택"))legend=i;}
+        GUI.Box(new Rect(585,780,1210,125),GUIContent.none,card);GUI.Label(new Rect(615,797,1150,30),"전설이는 능력치에 영향을 주지 않습니다.",header);GUI.Label(new Rect(615,837,1150,42),"자유롭게 전장을 이동하고 전리품 구슬을 회수하며, 승리 연출을 함께합니다.",small);
     }
 
     private void DrawGame(){HandleUnitDrag();HandleHotkeys();DrawTop();DrawLeft();DrawBoard();DrawRight();DrawBench();DrawShop();DrawSelectionGhost();if(showCarousel)DrawCarousel();if(showRecipeGuide&&Time.unscaledTime<recipeGuideUntil)DrawRecipeGuide();else if(showRecipeGuide)showRecipeGuide=false;if(hp<=0&&!battling)DrawGameOver();}
