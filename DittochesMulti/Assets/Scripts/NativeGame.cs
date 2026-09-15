@@ -213,6 +213,7 @@ public sealed class NativeGame : MonoBehaviour
         GUI.Label(new Rect(legendPos.x-65,legendPos.y+39,130,20),Legends[legend],center);
         if(battling){DrawRect(new Rect(420,704,790,8),new Color(.06f,.08f,.10f));DrawRect(new Rect(420,704,790*battleProgress,8),accent);}
         if(!string.IsNullOrEmpty(lastCombatSummary))GUI.Label(new Rect(300,714,1040,22),lastCombatSummary,center);
+        if(!battling&&Time.unscaledTime<resultNoticeUntil){float remain=resultNoticeUntil-Time.unscaledTime,alpha=Mathf.Clamp01(Mathf.Min((4.5f-remain)*3f,remain*2f));Rect banner=new Rect(525,300,590,105);DrawRect(banner,new Color(.008f,.025f,.045f,.88f*alpha));DrawRect(new Rect(banner.x,banner.y,banner.width,4),new Color(accent.r,accent.g,accent.b,alpha));Color old=GUI.color;GUI.color=new Color(1,1,1,alpha);GUI.Label(new Rect(550,311,540,42),win?"전투 승리":"전투 패배",title);GUI.Label(new Rect(550,354,540,32),lastReward,center);GUI.color=old;}
     }
     private void ClickBoard(int idx)
     {
@@ -256,7 +257,7 @@ public sealed class NativeGame : MonoBehaviour
     }
     private void DrawBench()
     {
-        DrawRect(new Rect(282,738,1068,92),new Color(.018f,.043f,.065f,.96f));GUI.Label(new Rect(294,744,100,22),"BENCH",small);
+        DrawRect(new Rect(282,738,1068,92),new Color(.018f,.043f,.065f,.96f));GUI.Label(new Rect(294,744,100,22),"BENCH",small);GUI.Label(new Rect(1195,744,140,22),$"{bench.Count(u=>u!=null)} / 9 보관",small);
         for(int i=0;i<9;i++){Rect r=new Rect(376+i*106,750,98,68);bool hovered=r.Contains(Event.current.mousePosition);benchHover[i]=Mathf.MoveTowards(benchHover[i],hovered?1f:0f,Time.unscaledDeltaTime*8f);float lift=benchHover[i]*4f;GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(benchHover[i]>0)DrawRect(new Rect(r.x,r.y,r.width,3),new Color(accent.r,accent.g,accent.b,benchHover[i]));if(bench[i]!=null){Portrait(new Rect(r.x+4,r.y-2-lift,55+lift,52+lift),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+48,r.y+5,47,23),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+48,r.y+32,47,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
     }
     private void SelectInventoryItem(int index)
@@ -321,8 +322,8 @@ public sealed class NativeGame : MonoBehaviour
     private void DrawShop()
     {
         DrawRect(new Rect(0,838,1920,242),new Color(.012f,.030f,.052f,.99f));DrawRect(new Rect(0,838,1920,3),accent);GUI.Label(new Rect(40,855,230,30),"SHOP · 디지몬 모집",header);
-        GUI.Label(new Rect(270,842,800,22),ShopOddsText(),small);
-        if(Btn(new Rect(40,895,145,42),"새로고침 2G",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,42),shopLocked?"잠금 유지 중":"상점 잠금")){shopLocked=!shopLocked;Save();}
+        int interest=Mathf.Min(5,gold/10);GUI.Label(new Rect(270,842,800,22),ShopOddsText(),small);GUI.Label(new Rect(40,1028,205,24),$"이자 +{interest}G  ·  다음 기본 수입 {5+interest}G",small);
+        if(Btn(new Rect(40,895,145,42),"새로고침 2G",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,34),shopLocked?"◆ 잠금 유지":"◇ 상점 잠금")){shopLocked=!shopLocked;Save();}
         for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);bool hovered=r.Contains(Event.current.mousePosition);shopHover[i]=Mathf.MoveTowards(shopHover[i],hovered?1f:0f,Time.unscaledDeltaTime*7f);GUI.Box(r,GUIContent.none,shopHover[i]>.03f?selectedStyle:card);UnitDef d=shop[i];if(d!=null){Color rarity=CostColor(d.cost);DrawRect(new Rect(r.x,r.y,r.width,4+shopHover[i]*2),rarity);float lift=shopHover[i]*6f,scale=shopHover[i]*5f;Portrait(new Rect(r.x+8-scale*.5f,r.y+8-lift,105+scale,100+scale),UnitSprite(d));GUI.Label(new Rect(r.x+112,r.y+12,105,28),UnitName(d),label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
         string action=RoundType()=="초밥집"?RoundLabel()+" 선택창 열기":RoundLabel()+" 전투 시작";if(Btn(new Rect(1530,875,330,135),battling?"전투 진행 중":action,!battling&&(RoundType()=="초밥집"||board.Any(u=>u!=null)))){if(RoundType()=="초밥집")OpenCarousel();else StartCoroutine(Battle());}
     }
