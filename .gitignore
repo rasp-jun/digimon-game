@@ -24,6 +24,7 @@
 
 # Local tooling and downloaded dependencies
 /tmp/
+/.unity-editor/
 .vs/
 .vscode/
 .idea/
@@ -39,3 +40,5 @@ DittochesMulti/Assets/Resources/**/*.png
 DittochesMulti/Assets/Resources/**/*.jpg
 DittochesMulti/Assets/Resources/**/*.jpeg
 DittochesMulti/Assets/Resources/**/*.psd
+DittochesMulti/Assets/Resources/**/*.fbx
+DittochesMulti/Assets/Resources/**/*.blend
