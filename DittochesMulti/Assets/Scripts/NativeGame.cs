@@ -82,7 +82,8 @@ public sealed class NativeGame : MonoBehaviour
     private readonly List<int> inventory=new List<int>();
     private Unit inspectedUnit;
     private Vector2 legendPos=new Vector2(785,690), legendTarget=new Vector2(785,690);
-    private bool shopLocked, showCarousel;
+    private bool shopLocked, showCarousel, showRecipeGuide;
+    private int recipeFocus=-1;
     private UnitDef[] carouselUnits=new UnitDef[3]; private int[] carouselItems=new int[3];
     private GUIStyle title, header, label, small, center, button, card, selectedStyle;
     private readonly Color bg=new Color(.035f,.075f,.09f), panel=new Color(.07f,.13f,.15f), accent=new Color(.77f,.9f,.54f);
@@ -157,7 +158,7 @@ public sealed class NativeGame : MonoBehaviour
         if(Btn(new Rect(1230,795,300,80),"새 게임 초기화")){ResetGame();lobby=false;}
     }
 
-    private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawShop();if(showCarousel)DrawCarousel();if(hp<=0&&!battling)DrawGameOver();}
+    private void DrawGame(){DrawTop();DrawLeft();DrawBoard();DrawRight();DrawShop();if(showCarousel)DrawCarousel();if(showRecipeGuide)DrawRecipeGuide();if(hp<=0&&!battling)DrawGameOver();}
     private void DrawGameOver()
     {
         DrawRect(new Rect(0,0,1920,1080),new Color(.01f,.025f,.04f,.88f));GUI.Box(new Rect(540,235,840,600),GUIContent.none,card);GUI.Label(new Rect(650,285,620,60),"리그 도전 종료",title);GUI.Label(new Rect(650,365,620,42),$"최종 기록 · {RoundLabel()} 라운드",header);GUI.Label(new Rect(650,420,620,72),"전장을 정비하고 새 리그에 다시 도전할 수 있습니다.\n캐릭터 버전과 난이도 선택은 그대로 유지됩니다.",center);GUI.Label(new Rect(650,520,620,36),lastCombatSummary,center);
@@ -176,8 +177,8 @@ public sealed class NativeGame : MonoBehaviour
         Trait(175,"전사",board.Count(u=>u!=null&&u.def.role=="전사"));Trait(240,"탱커",board.Count(u=>u!=null&&u.def.role=="탱커"));Trait(305,"사수",board.Count(u=>u!=null&&u.def.role=="사수"));
         GUI.Label(new Rect(40,390,220,30),"전설이",header);GUI.Label(new Rect(40,435,215,36),Legends[legend],center);GUI.Label(new Rect(40,480,215,70),"필드에서 직접 움직이며\n전투와 전리품을 지켜봅니다.",center);
         GUI.Label(new Rect(40,560,220,30),"장비 보관함",header);
-        for(int i=0;i<inventory.Count&&i<8;i++){Rect ir=new Rect(40+(i%4)*52,600+(i/4)*50,45,43);int item=inventory[i];GUI.Box(ir,GUIContent.none,i==selectedItem?selectedStyle:card);if(GUI.Button(ir,new GUIContent(ItemIcons[item],ItemNames[item]+"\n"+ItemDescriptions[item]),button)){selectedItem=selectedItem==i?-1:i;selectedBench=-1;selectedBoard=-1;}}
-        string itemHelp=selectedItem>=0&&selectedItem<inventory.Count?ItemNames[inventory[selectedItem]]+" · "+ItemDescriptions[inventory[selectedItem]]:"장비 선택 → 유닛 선택 · 재료 2개는 자동 합성";GUI.Label(new Rect(40,699,215,42),itemHelp,small);
+        for(int i=0;i<inventory.Count&&i<12;i++){Rect ir=new Rect(40+(i%4)*52,590+(i/4)*48,45,41);int item=inventory[i];GUI.Box(ir,GUIContent.none,i==selectedItem?selectedStyle:card);Event e=Event.current;if(e!=null&&e.type==EventType.MouseDown&&e.button==1&&ir.Contains(e.mousePosition)){recipeFocus=item;showRecipeGuide=true;e.Use();}else if(GUI.Button(ir,new GUIContent(ItemIcons[item],ItemNames[item]+"\n"+ItemDescriptions[item]),button))SelectInventoryItem(i);}
+        string itemHelp=selectedItem>=0&&selectedItem<inventory.Count?ItemNames[inventory[selectedItem]]+" 선택됨 · 두 번째 재료 클릭":"좌클릭: 선택/합성/장착 · 우클릭: 조합법";GUI.Label(new Rect(40,727,215,20),itemHelp,small);
         GUI.Label(new Rect(40,746,220,27),"난이도",header);GUI.Label(new Rect(40,775,220,25),Difficulties[difficulty]+$" · AI {DifficultyScale[difficulty]*100:0}%",center);
     }
     private void Trait(float y,string name,int count){GUI.Box(new Rect(38,y,218,52),GUIContent.none,count>=2?selectedStyle:card);GUI.Label(new Rect(50,y+8,110,34),name,label);GUI.Label(new Rect(175,y+8,65,34),count+" / 2",label);}
@@ -237,7 +238,37 @@ public sealed class NativeGame : MonoBehaviour
         for(int i=0;i<8;i++){float y=170+i*55;bool fighting=battling&&i>0&&names[i]==currentOpponent;GUI.Box(new Rect(1380,y,500,46),GUIContent.none,i==0||fighting?selectedStyle:card);GUI.Label(new Rect(1395,y+8,35,28),(i+1).ToString(),label);GUI.Label(new Rect(1440,y+8,250,28),(fighting?"⚔ ":"")+names[i],label);GUI.Label(new Rect(1735,y+8,125,28),i==0?hp+" HP":Mathf.Max(0,100-round*i)+" HP",small);}}
         GUI.Label(new Rect(1380,635,500,30),"대기석",header);
         for(int i=0;i<9;i++){Rect r=new Rect(1380+(i%5)*98,675+(i/5)*63,88,55);GUI.Box(r,GUIContent.none,i==selectedBench?selectedStyle:card);if(bench[i]!=null){Portrait(new Rect(r.x+2,r.y+1,45,42),UnitSprite(bench[i].def));GUI.Label(new Rect(r.x+42,r.y+3,43,27),UnitName(bench[i].def),small);GUI.Label(new Rect(r.x+42,r.y+29,43,20),new string('★',bench[i].star),small);}if(GUI.Button(r,GUIContent.none,GUIStyle.none))ClickBench(i);}
-        if(Btn(new Rect(1380,780,235,38),"선택 유닛 판매",selectedBench>=0)){Unit u=bench[selectedBench];gold+=u.def.cost*(int)Mathf.Pow(3,u.star-1);pool[u.def.id]+=(int)Mathf.Pow(3,u.star-1);bench[selectedBench]=null;if(inspectedUnit==u)inspectedUnit=null;selectedBench=-1;Save();}
+        if(Btn(new Rect(1380,780,235,38),"선택 유닛 판매",!battling&&(selectedBench>=0||selectedBoard>=0)))SellSelectedUnit();
+    }
+    private void SelectInventoryItem(int index)
+    {
+        if(index<0||index>=inventory.Count)return;if(selectedItem==index){selectedItem=-1;return;}
+        if(selectedItem>=0&&selectedItem<inventory.Count&&inventory[selectedItem]<=3&&inventory[index]<=3)
+        {
+            int first=inventory[selectedItem],second=inventory[index],completed=ItemRecipes[first,second];int high=Mathf.Max(selectedItem,index),low=Mathf.Min(selectedItem,index);inventory.RemoveAt(high);inventory.RemoveAt(low);inventory.Add(completed);selectedItem=-1;lastReward=ItemIcons[completed]+" "+ItemNames[completed]+" 보관함 합성 완료";Save();return;
+        }
+        selectedItem=index;selectedBench=-1;selectedBoard=-1;
+    }
+    private void DrawRecipeGuide()
+    {
+        DrawRect(new Rect(0,0,1920,1080),new Color(0,0,0,.65f));GUI.Box(new Rect(535,220,850,625),GUIContent.none,card);GUI.Label(new Rect(620,255,680,48),"장비 조합법",title);
+        if(recipeFocus>=0&&recipeFocus<ItemNames.Length)GUI.Label(new Rect(620,310,680,34),ItemIcons[recipeFocus]+"  "+ItemNames[recipeFocus]+" · "+ItemDescriptions[recipeFocus],center);
+        if(recipeFocus<=3)
+        {
+            for(int ingredient=0;ingredient<4;ingredient++){int result=ItemRecipes[Mathf.Clamp(recipeFocus,0,3),ingredient];float y=375+ingredient*82;GUI.Box(new Rect(650,y,620,62),GUIContent.none,selectedStyle);GUI.Label(new Rect(675,y+8,570,45),ItemIcons[recipeFocus]+" "+ItemNames[recipeFocus]+"  +  "+ItemIcons[ingredient]+" "+ItemNames[ingredient]+"  =  "+ItemIcons[result]+" "+ItemNames[result],label);}
+        }
+        else
+        {
+            bool found=false;for(int a=0;a<4;a++)for(int b=a;b<4;b++)if(ItemRecipes[a,b]==recipeFocus){found=true;GUI.Box(new Rect(650,410,620,76),GUIContent.none,selectedStyle);GUI.Label(new Rect(675,425,570,45),ItemIcons[a]+" "+ItemNames[a]+"  +  "+ItemIcons[b]+" "+ItemNames[b]+"  =  "+ItemIcons[recipeFocus]+" "+ItemNames[recipeFocus],label);}
+            if(!found)GUI.Label(new Rect(650,410,620,65),"이 아이템은 조합 장비가 아닙니다.",center);
+        }
+        if(Btn(new Rect(785,765,350,55),"닫기")){showRecipeGuide=false;recipeFocus=-1;}
+    }
+    private void SellSelectedUnit()
+    {
+        Unit unit=selectedBench>=0?bench[selectedBench]:selectedBoard>=0?board[selectedBoard]:null;if(unit==null)return;int copies=(int)Mathf.Pow(3,unit.star-1);gold+=unit.def.cost*copies;pool[unit.def.id]+=copies;
+        if(unit.items.Count>0){inventory.AddRange(unit.items);lastReward=UnitName(unit.def)+" 판매 · 장비 "+unit.items.Count+"개 보관함 반환";unit.items.Clear();}else lastReward=UnitName(unit.def)+" 판매";
+        if(selectedBench>=0)bench[selectedBench]=null;else board[selectedBoard]=null;if(inspectedUnit==unit)inspectedUnit=null;selectedBench=selectedBoard=-1;Save();
     }
     private void DrawUnitDetail()
     {
