@@ -57,7 +57,7 @@ public sealed class NativeGame : MonoBehaviour
     };
     private const string SaveKey="multiSoloStateV1";
     private static readonly string[] Legends={"비트몬","코로몬","토코몬","어니몬"};
-    private static readonly string[] LegendSprites={"","Koromon","Tokomon","Pyocomon"};
+    private static readonly string[] LegendSprites={"ArtVariants/Legends/Bitmon-v1","ArtVariants/LicensedFanArt/Koromon-v1","ArtVariants/LicensedFanArt/Tokomon-unit-v2","ArtVariants/LicensedFanArt/Pyocomon-unit-v2"};
     private static readonly string[] Difficulties={"쉬움","보통","어려움"};
     private static readonly string[] RivalNames={"태일","매튜","소라","미나","리키","한솔","나리"};
     private static readonly float[] DifficultyScale={.88f,1f,1.12f};
@@ -81,7 +81,7 @@ public sealed class NativeGame : MonoBehaviour
     private readonly List<LootOrb> lootOrbs=new List<LootOrb>();
     private readonly List<int> inventory=new List<int>();
     private Unit inspectedUnit;
-    private Vector2 legendPos=new Vector2(785,690), legendTarget=new Vector2(785,690);
+    private Vector2 legendPos=new Vector2(785,690), legendTarget=new Vector2(785,690), legendVelocity;
     private bool shopLocked, showCarousel, showRecipeGuide;
     private int recipeFocus=-1;
     private float recipeGuideUntil;
@@ -205,9 +205,10 @@ public sealed class NativeGame : MonoBehaviour
         if(battling)foreach(Fighter f in fighters.Where(x=>!x.dead))DrawFighter(f);
         for(int oi=lootOrbs.Count-1;oi>=0;oi--){LootOrb orb=lootOrbs[oi];Rect or=new Rect(orb.pos.x-24,orb.pos.y-24,48,48);DrawRect(or,orb.rarity==2?new Color(1,.75f,.15f):orb.rarity==1?new Color(.25f,.65f,1):new Color(.65f,1,.65f));GUI.Label(or,"◆",center);if(!battling&&GUI.Button(or,GUIContent.none,GUIStyle.none))CollectOrb(orb);}
         UpdateLegendInput();
-        legendPos=Vector2.MoveTowards(legendPos,legendTarget,Time.deltaTime*(battling?260:520));
-        Portrait(new Rect(legendPos.x-43,legendPos.y-43,86,86),LegendSprites[legend],"⌁");
-        GUI.Label(new Rect(legendPos.x-65,legendPos.y+34,130,20),Legends[legend],center);
+        legendPos=Vector2.SmoothDamp(legendPos,legendTarget,ref legendVelocity,battling?.30f:.18f,battling?430f:720f,Time.deltaTime);
+        float legendBob=Mathf.Sin(Time.unscaledTime*3.2f)*2.5f,moveStretch=Mathf.Clamp01(legendVelocity.magnitude/500f);DrawRect(new Rect(legendPos.x-34,legendPos.y+39,68,9),new Color(0,0,0,.30f));
+        Portrait(new Rect(legendPos.x-48-moveStretch*3,legendPos.y-55+legendBob,96+moveStretch*6,96-moveStretch*3),LegendSprites[legend],"⌁");
+        GUI.Label(new Rect(legendPos.x-65,legendPos.y+39,130,20),Legends[legend],center);
         if(battling){DrawRect(new Rect(420,704,790,8),new Color(.06f,.08f,.10f));DrawRect(new Rect(420,704,790*battleProgress,8),accent);}
         if(!string.IsNullOrEmpty(lastCombatSummary))GUI.Label(new Rect(300,714,1040,22),lastCombatSummary,center);
     }
@@ -320,10 +321,11 @@ public sealed class NativeGame : MonoBehaviour
         DrawRect(new Rect(0,838,1920,242),new Color(.012f,.030f,.052f,.99f));DrawRect(new Rect(0,838,1920,3),accent);GUI.Label(new Rect(40,855,230,30),"SHOP · 디지몬 모집",header);
         GUI.Label(new Rect(270,842,800,22),ShopOddsText(),small);
         if(Btn(new Rect(40,895,145,42),"새로고침 2G",gold>=2)){gold-=2;RollShop();}if(Btn(new Rect(40,943,145,42),"경험치 +4",gold>=4&&level<9)){gold-=4;AddXp(4);Save();}if(Btn(new Rect(40,991,145,42),shopLocked?"잠금 유지 중":"상점 잠금")){shopLocked=!shopLocked;Save();}
-        for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);GUI.Box(r,GUIContent.none,card);UnitDef d=shop[i];if(d!=null){Portrait(new Rect(r.x+8,r.y+8,105,100),UnitSprite(d));GUI.Label(new Rect(r.x+112,r.y+12,105,28),UnitName(d),label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
+        for(int i=0;i<5;i++){Rect r=new Rect(270+i*245,865,225,165);GUI.Box(r,GUIContent.none,card);UnitDef d=shop[i];if(d!=null){DrawRect(new Rect(r.x,r.y,r.width,4),CostColor(d.cost));Portrait(new Rect(r.x+8,r.y+8,105,100),UnitSprite(d));GUI.Label(new Rect(r.x+112,r.y+12,105,28),UnitName(d),label);GUI.Label(new Rect(r.x+112,r.y+44,105,22),d.role,small);GUI.Label(new Rect(r.x+112,r.y+72,105,25),d.cost+" G",header);GUI.Label(new Rect(r.x+12,r.y+112,95,25),"POOL "+pool[d.id],small);if(Btn(new Rect(r.x+112,r.y+108,100,42),"구매",gold>=d.cost)&&Buy(i))Save();}else GUI.Label(r,"판매 완료",center);}
         string action=RoundType()=="초밥집"?RoundLabel()+" 선택창 열기":RoundLabel()+" 전투 시작";if(Btn(new Rect(1530,875,330,135),battling?"전투 진행 중":action,!battling&&(RoundType()=="초밥집"||board.Any(u=>u!=null)))){if(RoundType()=="초밥집")OpenCarousel();else StartCoroutine(Battle());}
     }
     private string ShopOddsText(){return $"LV.{level} 배치 {board.Count(u=>u!=null)}/{level}  ·  상점 확률  1G {ShopOdds[level-1,0]}%  2G {ShopOdds[level-1,1]}%  3G {ShopOdds[level-1,2]}%  4G {ShopOdds[level-1,3]}%  5G {ShopOdds[level-1,4]}%";}
+    private Color CostColor(int cost){if(cost==1)return new Color(.55f,.62f,.68f);if(cost==2)return new Color(.20f,.72f,.42f);if(cost==3)return new Color(.22f,.55f,1f);if(cost==4)return new Color(.72f,.30f,1f);return new Color(1f,.70f,.18f);}
     private void OpenCarousel(){int cost=Mathf.Clamp(2+(round-4)/7,1,5);UnitDef[] choices=Roster.Where(d=>d.cost==cost&&pool[d.id]>0).OrderBy(_=>UnityEngine.Random.value).ToArray();for(int i=0;i<3;i++){carouselUnits[i]=choices.Length>0?choices[i%choices.Length]:null;carouselItems[i]=UnityEngine.Random.Range(0,4);}showCarousel=true;}
     private void DrawCarousel()
     {
@@ -425,7 +427,7 @@ public sealed class NativeGame : MonoBehaviour
         bool changed=true;while(changed){changed=false;for(int star=1;star<3;star++){List<UnitRef> refs=FindUnits(id,star).Take(3).ToList();if(refs.Count<3)continue;UnitRef keep=refs[0];List<int> items=refs.SelectMany(r=>r.unit.items).ToList();foreach(UnitRef r in refs)ClearRef(r);keep.unit.star++;keep.unit.items.Clear();keep.unit.items.AddRange(items.Take(2));inventory.AddRange(items.Skip(2));PutRef(keep,keep.unit);changed=true;break;}}
         if(HasThree(id))for(int i=0;i<5;i++)if(shop[i]!=null&&shop[i].id==id){pool[id]++;shop[i]=null;}
     }
-    private void ResetGame(){Array.Clear(board,0,board.Length);Array.Clear(bench,0,bench.Length);Array.Clear(shop,0,shop.Length);inventory.Clear();lootOrbs.Clear();gold=0;hp=100;level=1;xp=0;round=1;selectedBench=selectedBoard=selectedItem=-1;shopLocked=false;showCarousel=false;inspectedUnit=null;legendPos=legendTarget=new Vector2(785,690);InitPool();board[3]=new Unit(Roster[0]);RollShop();Save();}
+    private void ResetGame(){Array.Clear(board,0,board.Length);Array.Clear(bench,0,bench.Length);Array.Clear(shop,0,shop.Length);inventory.Clear();lootOrbs.Clear();gold=0;hp=100;level=1;xp=0;round=1;selectedBench=selectedBoard=selectedItem=-1;shopLocked=false;showCarousel=false;inspectedUnit=null;legendPos=legendTarget=new Vector2(785,690);legendVelocity=Vector2.zero;InitPool();board[3]=new Unit(Roster[0]);RollShop();Save();}
 
     private static UnitSave SaveUnit(Unit unit){return unit==null?null:new UnitSave{id=unit.def.id,star=unit.star,items=unit.items.ToArray()};}
     private static Unit LoadUnit(UnitSave saved)
